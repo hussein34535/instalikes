@@ -1,13 +1,23 @@
+import fs from "fs";
+import path from "path";
+
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  const { postUrl } = req.body;
+  const { post } = req.body || {};
+  if (!post) return res.status(400).json({ error: "Post ID مطلوب" });
 
-  // رجع رد فوري للمستخدم
-  res.status(200).json({ message: `✅ الطلب استلم لرابط: ${postUrl}، جاري التنفيذ في الخلفية...` });
+  const accountsPath = path.join(process.cwd(), "accounts.json");
+  const accounts = JSON.parse(fs.readFileSync(accountsPath, "utf-8"));
 
-  // تنفيذ بسيط في الخلفية (اختياري)
-  // يمكنك استخدام postUrl هنا لإجراء عمليات اللايكات الفعلية
-  // مثال:
-  // await fetch('https://your-server.com/run-likes', { method: 'POST', body: JSON.stringify({ url: postUrl }) });
+  const results = accounts.map(acc => ({
+    username: acc.username,
+    status: "✅ تم استقبال الحساب وجاري التنفيذ"
+  }));
+
+  // نحفظ النتائج موقتًا
+  const resultsPath = path.join(process.cwd(), "results.json");
+  fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+
+  return res.status(200).json({ message: "✅ العملية بدأت بنجاح", results });
 }

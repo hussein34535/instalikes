@@ -1,69 +1,33 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <title>لوحة التحكم</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background: #0f172a;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      gap: 20px;
-    }
-    button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 10px;
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-      font-size: 18px;
-      transition: 0.2s;
-    }
-    button:hover {
-      background: #1d4ed8;
-    }
-    #msg {
-      font-size: 20px;
-      color: #22c55e;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insta Auto Liker</title>
 </head>
 <body>
-  <h1>🚀 لوحة التحكم</h1>
-  <input type="text" id="postUrl" placeholder="أدخل رابط المنشور هنا" style="padding: 10px; border-radius: 5px; border: 1px solid #333; background: #1a202c; color: #fff; width: 300px;">
-  <button onclick="start()">ابدأ التنفيذ</button>
+  <h2>🚀 Insta Auto Liker</h2>
+  <input id="post" type="text" placeholder="رابط بوست إنستجرام">
+  <button onclick="start()">ابدأ</button>
   <button onclick="showResults()">عرض النتائج</button>
-  <div id="msg"></div>
+  <pre id="output"></pre>
 
   <script>
     async function start() {
-      const postUrl = document.getElementById('postUrl').value;
-      if (!postUrl) {
-        document.getElementById('msg').innerText = "الرجاء إدخال رابط المنشور.";
-        return;
-      }
-      document.getElementById('msg').innerText = "جارٍ الإرسال...";
-      const res = await fetch('/api/start', { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ postUrl })
+      const post = document.getElementById("post").value;
+      const res = await fetch("/api/start", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ post })
       });
       const data = await res.json();
-      document.getElementById('msg').innerText = data.message;
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
     }
 
     async function showResults() {
-      const res = await fetch('/api/results');
+      const res = await fetch("/api/results");
       const data = await res.json();
-      document.getElementById('msg').innerText = `عدد اللايكات: ${data.likes_done}`;
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
     }
   </script>
 </body>

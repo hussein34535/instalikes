@@ -1,14 +1,13 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 export default function handler(req, res) {
-  const filePath = path.join(process.cwd(), 'results.json');
+  const resultsPath = path.join(process.cwd(), "results.json");
 
-  // لو الملف مش موجود نعمله
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify({ likes_done: 0 }));
+  if (!fs.existsSync(resultsPath)) {
+    return res.status(200).json({ results: [] });
   }
 
-  const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  res.status(200).json(data);
+  const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8"));
+  return res.status(200).json({ results });
 }
