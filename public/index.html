@@ -36,14 +36,26 @@
 </head>
 <body>
   <h1>🚀 لوحة التحكم</h1>
+  <input type="text" id="postUrl" placeholder="أدخل رابط المنشور هنا" style="padding: 10px; border-radius: 5px; border: 1px solid #333; background: #1a202c; color: #fff; width: 300px;">
   <button onclick="start()">ابدأ التنفيذ</button>
   <button onclick="showResults()">عرض النتائج</button>
   <div id="msg"></div>
 
   <script>
     async function start() {
+      const postUrl = document.getElementById('postUrl').value;
+      if (!postUrl) {
+        document.getElementById('msg').innerText = "الرجاء إدخال رابط المنشور.";
+        return;
+      }
       document.getElementById('msg').innerText = "جارٍ الإرسال...";
-      const res = await fetch('/api/start', { method: 'POST' });
+      const res = await fetch('/api/start', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ postUrl })
+      });
       const data = await res.json();
       document.getElementById('msg').innerText = data.message;
     }
