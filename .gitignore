@@ -5,5 +5,4 @@ venv/
 *.log
 .vscode/
 .DS_Store
-accounts.json
 .vercel
