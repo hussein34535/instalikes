@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة التحكم</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #0f172a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    #msg {
+      font-size: 20px;
+      color: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 لوحة التحكم</h1>
+  <button onclick="start()">ابدأ التنفيذ</button>
+  <button onclick="showResults()">عرض النتائج</button>
+  <div id="msg"></div>
+
+  <script>
+    async function start() {
+      document.getElementById('msg').innerText = "جارٍ الإرسال...";
+      const res = await fetch('/api/start', { method: 'POST' });
+      const data = await res.json();
+      document.getElementById('msg').innerText = data.message;
+    }
+
+    async function showResults() {
+      const res = await fetch('/api/results');
+      const data = await res.json();
+      document.getElementById('msg').innerText = `عدد اللايكات: ${data.likes_done}`;
+    }
+  </script>
+</body>
+</html>
