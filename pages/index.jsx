@@ -238,7 +238,7 @@ export default function Home() {
               <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
                 <button
                   className="btn btn-warning"
-                  onClick={startCheck}
+                  onClick={startCheckJob}
                   style={{ padding: '5px 10px', fontSize: '16px' }}
                   title="Check Accounts Health 🩺"
                 >
