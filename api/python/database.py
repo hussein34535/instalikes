@@ -131,10 +131,14 @@ def add_accounts_bulk(accounts_list):
     """
     accounts_list: list of dicts {username, password, proxy (optional)}
     """
-    url = _get_url("accounts")
-    headers = _get_headers()
-    # Merge duplicates (Upsert)
-    headers["Prefer"] = "resolution=merge-duplicates, return=representation"
+    try:
+        url = _get_url("accounts") + "?on_conflict=username"
+        headers = _get_headers()
+        # Merge duplicates (Upsert)
+        headers["Prefer"] = "resolution=merge-duplicates, return=representation"
+    except Exception as e:
+        print(f"Error preparing request: {e}")
+        return {"added": 0, "updated": 0, "error": str(e)}
     
     # Add default status if missing
     payloads = []
@@ -175,9 +179,9 @@ def get_active_accounts(limit=1000):
         return []
 
 def get_all_accounts(limit=1000):
-    url = _get_url("accounts") + f"?select=*&limit={limit}&order=id.desc"
-    headers = _get_headers()
     try:
+        url = _get_url("accounts") + f"?select=*&limit={limit}&order=id.desc"
+        headers = _get_headers()
         r = requests.get(url, headers=headers)
         r.raise_for_status()
         return r.json()
