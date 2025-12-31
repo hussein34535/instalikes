@@ -64,6 +64,21 @@ accounts_data = [
     {"username": "veihasufabu-6179hiyg@yopmail.com", "password": "haha7#"}
 ]
 
+# US Proxies provided by user
+proxies_list = [
+    "http://setohkmm:viuevel3xkqt@142.111.48.253:7030",
+    "http://setohkmm:viuevel3xkqt@23.95.150.145:6114",
+    "http://setohkmm:viuevel3xkqt@198.23.239.134:6540",
+    "http://setohkmm:viuevel3xkqt@107.172.163.27:6543",
+    "http://setohkmm:viuevel3xkqt@216.10.27.159:6837",
+    "http://setohkmm:viuevel3xkqt@23.26.71.145:5628",
+    "http://setohkmm:viuevel3xkqt@23.27.208.120:5830"
+]
+
+# Assign proxies round-robin
+for i, acc in enumerate(accounts_data):
+    acc["proxy"] = proxies_list[i % len(proxies_list)]
+
 print(f"Importing {len(accounts_data)} accounts...")
 stats = db.add_accounts_bulk(accounts_data)
 print(f"Done! Added: {stats['added']}, Updated: {stats['updated']}")
