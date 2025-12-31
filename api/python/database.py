@@ -27,23 +27,21 @@ def get_db_connection():
         try:
             # Parse URL
             from urllib.parse import urlparse
-            import socket
+            import dns.resolver
             
             url = urlparse(DATABASE_URL)
             hostname = url.hostname
             
-            # FORCE IPv4 Resolution
-            # AF_INET ensures we ONLY get IPv4 addresses
-            print(f"Resolving {hostname} (IPv4)...")
-            infos = socket.getaddrinfo(hostname, 5432, family=socket.AF_INET, proto=socket.IPPROTO_TCP)
+            # Use Google DNS (8.8.8.8) to bypass local resolver issues
+            print(f"Resolving {hostname} using Google DNS (8.8.8.8)...")
+            resolver = dns.resolver.Resolver()
+            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+            answer = resolver.resolve(hostname, 'A')
             
-            if not infos:
-                raise Exception("No IPv4 address found!")
-                
-            ipv4_ip = infos[0][4][0]
-            print(f"Resolved to: {ipv4_ip}")
+            ipv4_ip = answer[0].to_text()
+            print(f"Resolved to IPv4: {ipv4_ip}")
             
-            # Connect using the IP ADDRESS directly
+            # Connect using the resolved IP
             conn = psycopg2.connect(
                 host=ipv4_ip,
                 user=url.username,
@@ -54,10 +52,14 @@ def get_db_connection():
             )
             return conn
         except Exception as e:
-            print(f"IPv4 Connection Error: {e}")
-            # Last resort fallback
-            conn = psycopg2.connect(DATABASE_URL)
-            return conn
+            print(f"Direct DNS Resolution failed: {e}")
+            # Fallback to standard connection
+            try:
+                conn = psycopg2.connect(DATABASE_URL)
+                return conn
+            except Exception as e2:
+                print(f"Fallback connection failed: {e2}")
+                raise e2
     else:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
