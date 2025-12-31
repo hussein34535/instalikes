@@ -154,6 +154,28 @@ def stop_check_endpoint():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# --- Delete ALL Accounts Endpoint ---
+@app.route('/api/accounts/delete-all', methods=['POST'])
+def delete_all_accounts_endpoint():
+    try:
+        # Fetch all accounts and delete them
+        # Note: Supabase REST API doesn't support "DELETE *", we must specify criteria.
+        # But we can query all usernames.
+        # Or better: DELETE where username is not null (neq.null)
+        urla = db._get_url("accounts") + "?username=neq.null" # Tricks Supabase to delete all rows? 
+        # Actually "neq" might not work for delete without filter in some setups.
+        # Safer: Get all, loop delete.
+        
+        all_accs = db.get_all_accounts(limit=1000)
+        count = 0
+        for acc in all_accs:
+            db.delete_account(acc['username'])
+            count += 1
+            
+        return jsonify({"message": f"Deleted {count} accounts."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # --- Email Generator Endpoint ---
 @app.route('/api/utils/generate-email', methods=['POST'])
 def generate_email_endpoint():

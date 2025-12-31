@@ -147,6 +147,21 @@ export default function Home() {
     }
   };
 
+  const deleteAllAccounts = async () => {
+    if (!confirm("⚠️ ARE YOU SURE? This will delete ALL accounts!")) return;
+    if (!confirm("⚠️ REALLY? This cannot be undone!")) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/accounts/delete-all`, { method: 'POST' });
+      const data = await res.json();
+      alert(data.message);
+      fetchAccountList();
+      fetchStats();
+    } catch (e) {
+      alert("Error: " + e.message);
+    }
+  };
+
   const stopCheck = async () => {
     try {
       await fetch(API_URL + '/api/accounts/stop', { method: 'POST' });
@@ -342,7 +357,10 @@ export default function Home() {
             <div className="glass-panel">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ marginTop: 0 }}>Account Lab</h3>
-                <button className="btn btn-warning btn-sm" onClick={fetchAccountList}>Refresh List 🔄</button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn btn-danger btn-sm" onClick={deleteAllAccounts} style={{ fontWeight: 'bold' }}>Delete ALL 🗑️</button>
+                  <button className="btn btn-warning btn-sm" onClick={fetchAccountList}>Refresh List 🔄</button>
+                </div>
               </div>
 
               <div style={{ overflowX: 'auto' }}>
