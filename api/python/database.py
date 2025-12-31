@@ -25,12 +25,39 @@ def get_db_connection():
     db_type = get_db_type()
     if db_type == "POSTGRES":
         try:
-            # Simple connection (relies on OS having IPv6 disabled)
-            conn = psycopg2.connect(DATABASE_URL)
+            # Parse URL
+            from urllib.parse import urlparse
+            import socket
+            
+            url = urlparse(DATABASE_URL)
+            hostname = url.hostname
+            
+            # FORCE IPv4 Resolution
+            # AF_INET ensures we ONLY get IPv4 addresses
+            print(f"Resolving {hostname} (IPv4)...")
+            infos = socket.getaddrinfo(hostname, 5432, family=socket.AF_INET, proto=socket.IPPROTO_TCP)
+            
+            if not infos:
+                raise Exception("No IPv4 address found!")
+                
+            ipv4_ip = infos[0][4][0]
+            print(f"Resolved to: {ipv4_ip}")
+            
+            # Connect using the IP ADDRESS directly
+            conn = psycopg2.connect(
+                host=ipv4_ip,
+                user=url.username,
+                password=url.password,
+                port=url.port,
+                dbname=url.path[1:],
+                sslmode='require'
+            )
             return conn
         except Exception as e:
-            print(f"Connection failed: {e}")
-            raise e
+            print(f"IPv4 Connection Error: {e}")
+            # Last resort fallback
+            conn = psycopg2.connect(DATABASE_URL)
+            return conn
     else:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
