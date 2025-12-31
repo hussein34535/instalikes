@@ -11,6 +11,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import builtins
 import api.python.database as db
 
+# Import Proxy Manager
+try:
+    from api.python import proxy_manager
+except ImportError:
+    import proxy_manager
+
+# Initialize DB
+db.init_db()
+
 # Disable any interactive input prompts globally (non-interactive backend)
 builtins.input = lambda *args, **kwargs: ""
 
@@ -138,8 +147,10 @@ def process_account(acc, media_id, job_id):
         else:
             db.log_event(job_id, f"[{username}] ❌ Error: {e}", "ERROR")
 
-def run_auto_liker(post_url):
-    job_id = db.create_job(post_url)
+def run_auto_liker(post_url, job_id=None):
+    if not job_id:
+        job_id = db.create_job(post_url, status="RUNNING")
+    
     db.log_event(job_id, f"🚀 Batch Process for: {post_url}", "INFO")
 
     # Load accounts from DB
@@ -225,7 +236,7 @@ def run_check_accounts_process():
     Mode: CHECK
     Logins to all accounts to verify status. No Likes.
     """
-    job_id = db.create_job("Check Accounts")
+    job_id = db.create_job("Check Accounts", status="RUNNING")
     db.log_event(job_id, "🔍 Starting Account Diagnosis...", "INFO")
     
     accounts = db.get_all_accounts(limit=1000) # Get ALL to check everyone
@@ -277,8 +288,17 @@ def run_check_accounts_process():
     db.update_job_status(job_id, "COMPLETED")
 
 def run_likes_process(post_url):
-    threading.Thread(target=run_auto_liker, args=(post_url,)).start()
-    return {"message": "✅ Smart Batch Job started. Monitor progress in Dashboard."}
+    # Detect Vercel Environment or Force Queue Mode
+    is_vercel = os.environ.get("VERCEL") or os.environ.get("QUEUE_MODE")
+    
+    if is_vercel:
+        # Queue the job for local worker
+        job_id = db.create_job(post_url, status="PENDING")
+        return {"message": "✅ Job Queued! Your 'Local Worker' on PC will pick it up automatically."}
+    else:
+        # Run immediately (Old behavior / Local run manual)
+        threading.Thread(target=run_auto_liker, args=(post_url,)).start()
+        return {"message": "✅ Smart Batch Job started locally."}
 
 def start_check_process():
     threading.Thread(target=run_check_accounts_process).start()

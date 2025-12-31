@@ -37,13 +37,13 @@ def init_db():
 
 # --- Job/Log Functions ---
 
-def create_job(target_url):
+def create_job(target_url, status="RUNNING"):
     url = _get_url("jobs")
     headers = _get_headers()
     
     payload = {
         "target_url": target_url,
-        "status": "RUNNING"
+        "status": status
     }
     
     try:
@@ -56,6 +56,17 @@ def create_job(target_url):
     except Exception as e:
         print(f"Error creating job: {e}")
         return None
+
+def get_pending_jobs():
+    url = _get_url("jobs") + "?status=eq.PENDING&order=created_at.asc"
+    headers = _get_headers()
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code == 200:
+            return r.json()
+    except:
+        pass
+    return []
 
 def update_job_status(job_id, status):
     url = _get_url("jobs") + f"?id=eq.{job_id}"
