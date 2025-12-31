@@ -322,7 +322,8 @@ export default function Home() {
                 <h3 style={{ marginTop: 0, borderBottom: '1px solid #334155', paddingBottom: '15px' }}>Live Execution Logs</h3>
                 <div style={{ flex: 1, overflowY: 'auto', maxHeight: '450px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   {logs.length === 0 && <span style={{ color: '#64748b', fontStyle: 'italic', padding: '20px' }}>No logs yet... waiting for start.</span>}
-                  {logs.map((log, i) => {
+                  {logs.map((logItem, i) => {
+                    const log = String(logItem || '');
                     const level = log.includes("[INFO]") ? "INFO" :
                       log.includes("[SUCCESS]") ? "SUCCESS" :
                         log.includes("[WARNING]") ? "WARNING" :
