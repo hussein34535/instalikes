@@ -324,7 +324,7 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {accountList.map(acc => (
+                    {Array.isArray(accountList) && accountList.map(acc => (
                       <tr key={acc.id}>
                         <td style={{ fontFamily: 'monospace' }}>{acc.username}</td>
                         <td><span className={`status-badge status-${acc.status}`}>{acc.status}</span></td>
@@ -337,6 +337,8 @@ export default function Home() {
                         </td>
                       </tr>
                     ))}
+                    {!Array.isArray(accountList) && <tr><td colSpan="4" style={{ textAlign: "center", padding: "20px", color: "var(--error)" }}>Data Error: Backend returned invalid format.</td></tr>}
+                    {Array.isArray(accountList) && accountList.length === 0 && <tr><td colSpan="4" style={{ textAlign: "center", padding: "20px" }}>No accounts found. Upload some!</td></tr>}
                   </tbody>
                 </table>
               </div>
