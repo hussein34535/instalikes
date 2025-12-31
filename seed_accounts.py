@@ -13,6 +13,7 @@ import api.python.database as db
 
 # Top-level list of new accounts
 new_accounts_list = [
+    "h4p7o9b7tk@airsworld.net:PasseumnmEkY",
 ]
 
 # Prepare data structure
