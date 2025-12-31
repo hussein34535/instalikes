@@ -62,7 +62,7 @@ def update_job_status(job_id, status):
     headers = _get_headers()
     
     payload = {"status": status}
-    if status in ['COMPLETED', 'FAILED']:
+    if status in ['COMPLETED', 'FAILED', 'STOPPED']:
         payload['completed_at'] = datetime.utcnow().isoformat()
         
     try:
@@ -70,6 +70,19 @@ def update_job_status(job_id, status):
         r.raise_for_status()
     except Exception as e:
         print(f"Error updating job {job_id}: {e}")
+
+def get_job_status(job_id):
+    url = _get_url("jobs") + f"?select=status&id=eq.{job_id}"
+    headers = _get_headers()
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code == 200:
+            data = r.json()
+            if data:
+                return data[0]['status']
+    except:
+        pass
+    return None
 
 def log_event(job_id, message, level='INFO'):
     url = _get_url("logs")
@@ -204,15 +217,14 @@ def update_account_status(username, status):
         print(f"Error updating account {username}: {e}")
 
 def update_verification_code(username, code):
-    url = _get_url("accounts") + f"?username=eq.{username}"
-    headers = _get_headers()
-    
-    payload = {
-        "verification_code": code,
-        # Ensure we don't accidentally reset status here, handled by engine
-    }
-    
     try:
+        url = _get_url("accounts") + f"?username=eq.{username}"
+        headers = _get_headers()
+        
+        payload = {
+            "verification_code": code,
+        }
+    
         r = requests.patch(url, headers=headers, json=payload)
         r.raise_for_status()
         return True
@@ -236,9 +248,9 @@ def get_verification_code(username):
         return None
 
 def delete_account(username):
-    url = _get_url("accounts") + f"?username=eq.{username}"
-    headers = _get_headers()
     try:
+        url = _get_url("accounts") + f"?username=eq.{username}"
+        headers = _get_headers()
         requests.delete(url, headers=headers)
         return True
     except Exception as e:

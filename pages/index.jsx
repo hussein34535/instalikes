@@ -233,6 +233,26 @@ export default function Home() {
           <div>
             <h1 style={{ margin: 0, fontSize: '32px', background: 'linear-gradient(to right, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>InstaAuto Pro</h1>
             <p style={{ margin: '5px 0 0', color: 'var(--text-muted)' }}>Professional Automation Suite</p>
+            {!isRunning && (
+              <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
+                <button
+                  className="btn btn-warning"
+                  onClick={startCheck}
+                  style={{ padding: '5px 10px', fontSize: '16px' }}
+                  title="Check Accounts Health 🩺"
+                >
+                  🩺 Check
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={stopCheck}
+                  style={{ padding: '5px 10px', fontSize: '16px' }}
+                  title="Stop Running Job 🛑"
+                >
+                  🛑 Stop
+                </button>
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '20px' }}>
             <div className="glass-panel" style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

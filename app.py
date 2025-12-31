@@ -126,5 +126,33 @@ def check_accounts_endpoint():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/accounts/stop', methods=['POST'])
+def stop_check_endpoint():
+    try:
+        # Get the latest running job and set it to STOPPED
+        # This is a simple implementation: stop the latest running job
+        # Ideally we pass job_id, but for now we find the active one.
+        # But wait, we don't know the job ID easily from frontend unless we track it.
+        # Let's just look for any RUNNING job and stop it.
+        # Or better: The check process is specific.
+        
+        # We'll use a new DB function or logic here.
+        # Let's start with getting latest job.
+        # Simpler: Just update ALL 'RUNNING' jobs to 'STOPPED' 
+        # (Since we only run one thing at a time usually)
+        
+        # But let's be more specific if possible.
+        # For now, let's update the latest running job.
+        
+        # Actually simplest way:
+        # Client sends request -> we query Jobs where status=RUNNING -> update to STOPPED.
+        url = db._get_url("jobs") + "?status=eq.RUNNING"
+        headers = db._get_headers()
+        payload = {"status": "STOPPED", "completed_at": db.datetime.utcnow().isoformat()}
+        requests.patch(url, headers=headers, json=payload)
+        return jsonify({"message": "🛑 Stopping all running jobs..."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(port=5353, debug=True)

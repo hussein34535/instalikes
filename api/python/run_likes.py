@@ -202,6 +202,12 @@ def run_check_accounts_process():
     db.log_event(job_id, f"📊 Checking {len(accounts)} accounts...", "INFO")
     
     for acc in accounts:
+        # Check for stop signal
+        current_status = db.get_job_status(job_id)
+        if current_status == 'STOPPED':
+            db.log_event(job_id, "🛑 Job stopped by user.", "WARNING")
+            break
+
         username = acc["username"]
         password = acc["password"]
         proxy = acc.get("proxy")
