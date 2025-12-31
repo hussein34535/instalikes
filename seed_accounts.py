@@ -74,3 +74,13 @@ if DELETE_ALL_FIRST:
     print("✨ Database Cleared.")
 
 print(f"📦 Preparing to import {len(accounts_data)} new accounts...")
+
+if accounts_data:
+    stats = db.add_accounts_bulk(accounts_data)
+    print(f"✅ Import Result: Added {stats.get('added', 0)}, Updated {stats.get('updated', 0)}")
+    if stats.get('error'):
+        print(f"❌ Error: {stats['error']}")
+else:
+    print("⚠️ No accounts to import.")
+
+print("🚀 Done.")
