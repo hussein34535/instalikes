@@ -170,6 +170,79 @@ def run_auto_liker(post_url):
     db.log_event(job_id, f"✅ Job Completed. Processed {total_processed} accounts.", "INFO")
     db.update_job_status(job_id, "COMPLETED")
 
+# --- Interactive Challenge Handler ---
+def interactive_challenge_handler(username, choice):
+    """
+    Pauses execution, updates DB to WAITING_FOR_CODE, and polls for code.
+    """
+    print(f"[{username}] ⚠️ Challenge Requested! Waiting for user code...")
+    db.update_account_status(username, "WAITING_FOR_CODE")
+    
+    # Poll for 5 minutes (300 seconds)
+    for _ in range(60): 
+        time.sleep(5)
+        code = db.get_verification_code(username)
+        if code:
+            print(f"[{username}] ✅ Code received: {code}")
+            return code
+            
+    print(f"[{username}] ❌ Timeout waiting for code.")
+    return None
+
+def run_check_accounts_process():
+    """
+    Mode: CHECK
+    Logins to all accounts to verify status. No Likes.
+    """
+    job_id = db.create_job("Check Accounts")
+    db.log_event(job_id, "🔍 Starting Account Diagnosis...", "INFO")
+    
+    accounts = db.get_all_accounts(limit=1000) # Get ALL to check everyone
+    
+    db.log_event(job_id, f"📊 Checking {len(accounts)} accounts...", "INFO")
+    
+    for acc in accounts:
+        username = acc["username"]
+        password = acc["password"]
+        proxy = acc.get("proxy")
+        
+        db.log_event(job_id, f"Checking {username}...", "INFO")
+        
+        cl = Client()
+        if proxy:
+             try:
+                 cl.set_proxy(proxy)
+             except:
+                 pass
+                 
+        # Hook the interactive handler
+        if username.endswith("@yopmail.com"):
+             # Keep auto handler for Yopmail if preferred, or switch to interactive
+             cl.challenge_code_handler = interactive_challenge_handler
+        else:
+             cl.challenge_code_handler = interactive_challenge_handler
+             
+        try:
+            cl.login(username, password)
+            db.update_account_status(username, "ACTIVE")
+            db.log_event(job_id, f"[{username}] ✅ Healthy", "SUCCESS")
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "challenge_required" in error_msg:
+                 db.update_account_status(username, "WAITING_FOR_CODE")
+                 db.log_event(job_id, f"[{username}] ⚠️ Needs Code (Check Account Lab)", "WARNING")
+            elif "password" in error_msg:
+                 db.update_account_status(username, "BANNED")
+                 db.log_event(job_id, f"[{username}] ❌ Bad Password", "ERROR")
+            else:
+                 db.log_event(job_id, f"[{username}] ❌ Error: {e}", "ERROR")
+                 
+    db.update_job_status(job_id, "COMPLETED")
+
 def run_likes_process(post_url):
     threading.Thread(target=run_auto_liker, args=(post_url,)).start()
     return {"message": "✅ Smart Batch Job started. Monitor progress in Dashboard."}
+
+def start_check_process():
+    threading.Thread(target=run_check_accounts_process).start()
+    return {"message": "✅ Account Check started. Monitor in Dashboard."}

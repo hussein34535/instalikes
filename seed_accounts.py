@@ -5,6 +5,9 @@ import os
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
+from dotenv import load_dotenv
+load_dotenv("dev.vars")
+
 import api.python.database as db
 
 accounts_data = [

@@ -1,13 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 
-// Automatically determine API URL based on environment
-// In Production (Vercel), use relative path (proxy handled by vercel.json)
-// In Development, use localhost:5353
 const API_URL = process.env.NODE_ENV === 'production'
   ? ''
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5353');
-
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | accounts
@@ -16,9 +12,11 @@ export default function Home() {
   const [jobStatus, setJobStatus] = useState('IDLE');
   const [stats, setStats] = useState({ total: 0, active: 0, banned: 0 });
 
-  // Account Upload State
+  // Account Lab State
   const [accountsText, setAccountsText] = useState('');
   const [uploadMessage, setUploadMessage] = useState('');
+  const [accountList, setAccountList] = useState([]);
+  const [fixModal, setFixModal] = useState({ show: false, username: '', code: '' });
 
   const logsEndRef = useRef(null);
 
@@ -31,6 +29,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (activeTab === 'accounts') {
+      fetchAccountList();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
@@ -41,6 +45,16 @@ export default function Home() {
       setStats(data);
     } catch (e) {
       console.error("Stats error", e);
+    }
+  };
+
+  const fetchAccountList = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/accounts/all`);
+      const data = await res.json();
+      setAccountList(data);
+    } catch (e) {
+      console.error("List error", e);
     }
   };
 
@@ -69,6 +83,16 @@ export default function Home() {
     }
   };
 
+  const startCheckJob = async () => {
+    try {
+      await fetch(`${API_URL}/api/accounts/check`, { method: "POST" });
+      setJobStatus("CHECKING");
+      alert("Diagnostic started! Check logs.");
+    } catch (e) {
+      alert("Error starting check: " + e.message);
+    }
+  };
+
   const handleUpload = async () => {
     setUploadMessage("Uploading...");
     try {
@@ -81,12 +105,44 @@ export default function Home() {
       if (data.details) {
         setUploadMessage(`Success! Added: ${data.details.added}, Updated: ${data.details.updated}`);
         fetchStats();
+        fetchAccountList();
         setAccountsText("");
       } else {
         setUploadMessage("Error: " + (data.error || "Unknown"));
       }
     } catch (e) {
       setUploadMessage("Error: " + e.message);
+    }
+  };
+
+  const submitCode = async () => {
+    if (!fixModal.code) return;
+    try {
+      await fetch(`${API_URL}/api/accounts/code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: fixModal.username, code: fixModal.code })
+      });
+      alert("Code Sent! The engine will try to use it.");
+      setFixModal({ show: false, username: '', code: '' });
+      fetchAccountList(); // Refresh
+    } catch (e) {
+      alert("Error: " + e.message);
+    }
+  };
+
+  const deleteAccount = async (username) => {
+    if (!confirm(`Delete ${username}?`)) return;
+    try {
+      await fetch(`${API_URL}/api/accounts/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username })
+      });
+      fetchAccountList();
+      fetchStats();
+    } catch (e) {
+      alert("Error: " + e.message);
     }
   };
 
@@ -100,6 +156,7 @@ export default function Home() {
             --card-bg: #1e293b;
             --primary: #3b82f6;
             --success: #22c55e;
+            --warning: #f59e0b;
             --error: #ef4444;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
@@ -129,6 +186,9 @@ export default function Home() {
           }
           .btn:hover { filter: brightness(1.1); }
           .btn-success { background: var(--success); }
+          .btn-warning { background: var(--warning); color: black; }
+          .btn-danger { background: var(--error); }
+          .btn-sm { padding: 5px 10px; font-size: 12px; }
           
           .tab-btn {
             background: transparent;
@@ -149,6 +209,21 @@ export default function Home() {
           .log-SUCCESS { color: #86efac; }
           .log-WARNING { color: #fde047; }
           .log-ERROR { color: #fca5a5; }
+
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th { text-align: left; color: var(--text-muted); padding: 10px; border-bottom: 1px solid #334155; }
+          td { padding: 10px; border-bottom: 1px solid #334155; font-size: 14px; }
+          .status-badge { padding: 4px 8px; borderRadius: 4px; font-size: 11px; fontWeight: bold; }
+          .status-ACTIVE { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+          .status-BANNED { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+          .status-WAITING_FOR_CODE { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+          
+          /* Modal */
+          .modal-overlay {
+             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+             background: rgba(0,0,0,0.7); display: flex; align-items: center; justifyContent: center;
+             z-index: 1000;
+          }
         `}</style>
       </Head>
 
@@ -174,14 +249,13 @@ export default function Home() {
         {/* Navigation */}
         <div style={{ marginBottom: '20px', borderBottom: '1px solid #334155' }}>
           <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-          <button className={`tab-btn ${activeTab === 'accounts' ? 'active' : ''}`} onClick={() => setActiveTab('accounts')}>Accounts Manager</button>
+          <button className={`tab-btn ${activeTab === 'accounts' ? 'active' : ''}`} onClick={() => setActiveTab('accounts')}>Account Lab 🧪</button>
         </div>
 
         {/* Content */}
         <main>
           {activeTab === 'dashboard' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
-
               {/* Control Panel */}
               <div className="glass-panel" style={{ height: 'fit-content' }}>
                 <h3 style={{ marginTop: 0 }}>Create Job</h3>
@@ -199,13 +273,14 @@ export default function Home() {
                   <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Delay: <strong>10s</strong></span>
                 </div>
 
-                <button className="btn" style={{ width: '100%' }} onClick={startJob}>
-                  Start Automation 🚀
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn" style={{ flex: 1 }} onClick={startJob}>Start Automation 🚀</button>
+                  <button className="btn btn-warning" style={{ width: '40px' }} title="Run Diagnostic Check" onClick={startCheckJob}>🩺</button>
+                </div>
 
                 <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #334155' }}>
                   <h4 style={{ margin: '0 0 10px', fontSize: '14px' }}>Status</h4>
-                  <div style={{ padding: '8px 12px', borderRadius: '6px', background: jobStatus === 'RUNNING' ? 'rgba(34, 197, 94, 0.2)' : '#334155', color: jobStatus === 'RUNNING' ? '#4ade80' : 'white', textAlign: 'center', fontWeight: 'bold' }}>
+                  <div style={{ padding: '8px 12px', borderRadius: '6px', background: jobStatus === 'RUNNING' || jobStatus === "CHECKING" ? 'rgba(34, 197, 94, 0.2)' : '#334155', color: jobStatus === 'RUNNING' ? '#4ade80' : 'white', textAlign: 'center', fontWeight: 'bold' }}>
                     {jobStatus}
                   </div>
                 </div>
@@ -233,26 +308,75 @@ export default function Home() {
 
           {activeTab === 'accounts' && (
             <div className="glass-panel">
-              <h3 style={{ marginTop: 0 }}>Upload Accounts</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-                Format: <code>username:password</code> or <code>username:password:http://...proxy...</code><br />
-                Paste one account per line.
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ marginTop: 0 }}>Account Lab</h3>
+                <button className="btn btn-warning btn-sm" onClick={fetchAccountList}>Refresh List 🔄</button>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Account</th>
+                      <th>Status</th>
+                      <th>Last Used</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accountList.map(acc => (
+                      <tr key={acc.id}>
+                        <td style={{ fontFamily: 'monospace' }}>{acc.username}</td>
+                        <td><span className={`status-badge status-${acc.status}`}>{acc.status}</span></td>
+                        <td>{acc.last_used ? new Date(acc.last_used).toLocaleTimeString() : '-'}</td>
+                        <td style={{ display: 'flex', gap: '8px' }}>
+                          {acc.status === 'WAITING_FOR_CODE' && (
+                            <button className="btn btn-warning btn-sm" onClick={() => setFixModal({ show: true, username: acc.username, code: '' })}>Enter Code 🔑</button>
+                          )}
+                          <button className="btn btn-danger btn-sm" onClick={() => deleteAccount(acc.username)}>Del</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <hr style={{ borderColor: '#334155', margin: '30px 0' }} />
+
+              <h3 style={{ marginTop: 0 }}>Upload New Accounts</h3>
               <textarea
-                rows={10}
+                rows={5}
                 value={accountsText}
                 onChange={(e) => setAccountsText(e.target.value)}
                 placeholder={"user1:pass1\nuser2:pass2:http://ip:port..."}
                 style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: '15px' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button className="btn btn-success" onClick={handleUpload}>Upload Accounts</button>
-                {uploadMessage && <span style={{ color: uploadMessage.includes('Error') ? '#ef4444' : '#4ade80' }}>{uploadMessage}</span>}
-              </div>
+              <button className="btn btn-success" onClick={handleUpload}>Upload Accounts</button>
+              {uploadMessage && <span style={{ marginLeft: '10px', color: uploadMessage.includes('Error') ? '#ef4444' : '#4ade80' }}>{uploadMessage}</span>}
             </div>
           )}
         </main>
       </div>
+
+      {fixModal.show && (
+        <div className="modal-overlay">
+          <div className="glass-panel" style={{ width: '400px', background: '#1e293b' }}>
+            <h3>Fix Account: {fixModal.username}</h3>
+            <p>Instagram sent a code to the email/phone associated with this account. Enter it below:</p>
+            <input
+              type="text"
+              placeholder="123456"
+              value={fixModal.code}
+              onChange={(e) => setFixModal({ ...fixModal, code: e.target.value })}
+              style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white', fontSize: '24px', textAlign: 'center', letterSpacing: '5px', marginBottom: '20px' }}
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn" style={{ flex: 1 }} onClick={submitCode}>Submit Code</button>
+              <button className="btn btn-danger" onClick={() => setFixModal({ show: false, username: '', code: '' })}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -174,6 +174,17 @@ def get_active_accounts(limit=1000):
         print(f"Error fetching accounts: {e}")
         return []
 
+def get_all_accounts(limit=1000):
+    url = _get_url("accounts") + f"?select=*&limit={limit}&order=id.desc"
+    headers = _get_headers()
+    try:
+        r = requests.get(url, headers=headers)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"Error fetching accounts: {e}")
+        return []
+
 def update_account_status(username, status):
     url = _get_url("accounts") + f"?username=eq.{username}"
     headers = _get_headers()
@@ -187,6 +198,48 @@ def update_account_status(username, status):
         requests.patch(url, headers=headers, json=payload)
     except Exception as e:
         print(f"Error updating account {username}: {e}")
+
+def update_verification_code(username, code):
+    url = _get_url("accounts") + f"?username=eq.{username}"
+    headers = _get_headers()
+    
+    payload = {
+        "verification_code": code,
+        # Ensure we don't accidentally reset status here, handled by engine
+    }
+    
+    try:
+        r = requests.patch(url, headers=headers, json=payload)
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"Error setting code for {username}: {e}")
+        return False
+
+def get_verification_code(username):
+    url = _get_url("accounts") + f"?select=verification_code&username=eq.{username}"
+    headers = _get_headers()
+    
+    try:
+        r = requests.get(url, headers=headers)
+        r.raise_for_status()
+        data = r.json()
+        if data:
+            return data[0].get('verification_code')
+        return None
+    except Exception as e:
+        print(f"Error getting code for {username}: {e}")
+        return None
+
+def delete_account(username):
+    url = _get_url("accounts") + f"?username=eq.{username}"
+    headers = _get_headers()
+    try:
+        requests.delete(url, headers=headers)
+        return True
+    except Exception as e:
+        print(f"Error deleting account {username}: {e}")
+        return False
 
 def get_account_stats():
     # Use HEAD requests with Count header for efficiency

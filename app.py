@@ -77,5 +77,53 @@ def get_stats():
     result = get_account_stats_process()
     return jsonify(result)
 
+# --- Account Lab Endpoints ---
+@app.route('/api/accounts/all', methods=['GET'])
+def get_all_accounts_endpoint():
+    try:
+         accounts = db.get_all_accounts()
+         return jsonify(accounts)
+    except Exception as e:
+         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/accounts/code', methods=['POST'])
+def submit_code():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        code = data.get('code')
+        if not username or not code:
+            return jsonify({"error": "Missing username or code"}), 400
+            
+        success = db.update_verification_code(username, code)
+        if success:
+             return jsonify({"message": "✅ Code submitted backend. Engine will pick it up."})
+        else:
+             return jsonify({"error": "Failed to update DB"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/accounts/delete', methods=['POST'])
+def delete_account_endpoint():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        if not username:
+             return jsonify({"error": "Missing username"}), 400
+             
+        db.delete_account(username)
+        return jsonify({"message": f"Deleted {username}"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/accounts/check', methods=['POST'])
+def check_accounts_endpoint():
+    try:
+        from api.python.run_likes import start_check_process
+        result = start_check_process()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(port=5353, debug=True)
