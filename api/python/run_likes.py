@@ -104,16 +104,29 @@ def process_account(acc, media_id, job_id):
         db.log_event(job_id, f"[{username}] ❤️ LIKED", "SUCCESS")
         
     except Exception as e:
+    except Exception as e:
         error_str = str(e).lower()
+        
         if "challenge_required" in error_str:
-            db.update_account_status(username, 'CHALLENGE')
-            db.log_event(job_id, f"[{username}] ⚠️ Challenge Required", "WARNING")
+            db.update_account_status(username, 'WAITING_FOR_CODE')
+            db.log_event(job_id, f"[{username}] ⚠️ Challenge Required (Check Account Lab)", "WARNING")
+            
+        elif "find an account" in error_str:
+             db.update_account_status(username, 'BANNED')
+             db.log_event(job_id, f"[{username}] ❌ Account Deleted/Banned (User not found)", "ERROR")
+             
         elif "password" in error_str or "credentials" in error_str:
             db.update_account_status(username, 'BANNED') # Likely invalid
             db.log_event(job_id, f"[{username}] ❌ Invalid Creds", "ERROR")
+            
         elif "feedback_required" in error_str:
             db.update_account_status(username, 'BANNED')
             db.log_event(job_id, f"[{username}] 🚨 Action Blocked (Proxy/IP Flagged)", "ERROR")
+            
+        elif "field is required" in error_str:
+             db.update_account_status(username, 'WAITING_FOR_CODE')
+             db.log_event(job_id, f"[{username}] ⚠️ Code Invalid/Empty - Try again", "WARNING")
+             
         else:
             db.log_event(job_id, f"[{username}] ❌ Error: {e}", "ERROR")
 
@@ -179,12 +192,22 @@ def interactive_challenge_handler(username, choice):
     db.update_account_status(username, "WAITING_FOR_CODE")
     
     # Poll for 5 minutes (300 seconds)
-    for _ in range(60): 
+    timeout = 300
+    start_time = time.time()
+    
+    while time.time() - start_time < timeout:
         time.sleep(5)
         code = db.get_verification_code(username)
+        
         if code:
-            print(f"[{username}] ✅ Code received: {code}")
-            return code
+             if code == "ABORT":
+                 print(f"[{username}] 🛑 Code entry aborted by user.")
+                 return None
+             if code.strip() == "":
+                 continue # Wait for actual code
+                 
+             print(f"[{username}] ✅ Code received: {code}")
+             return code
             
     print(f"[{username}] ❌ Timeout waiting for code.")
     return None
