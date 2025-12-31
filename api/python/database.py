@@ -217,20 +217,17 @@ def update_account_status(username, status):
         print(f"Error updating account {username}: {e}")
 
 def update_verification_code(username, code):
-    try:
-        url = _get_url("accounts") + f"?username=eq.{username}"
-        headers = _get_headers()
-        
-        payload = {
-            "verification_code": code,
-        }
+    # Propagate errors to app.py for better user feedback
+    url = _get_url("accounts") + f"?username=eq.{username}"
+    headers = _get_headers()
     
-        r = requests.patch(url, headers=headers, json=payload)
-        r.raise_for_status()
-        return True
-    except Exception as e:
-        print(f"Error setting code for {username}: {e}")
-        return False
+    payload = {
+        "verification_code": code,
+    }
+
+    r = requests.patch(url, headers=headers, json=payload)
+    r.raise_for_status()
+    return True
 
 def get_verification_code(username):
     url = _get_url("accounts") + f"?select=verification_code&username=eq.{username}"
