@@ -18,10 +18,6 @@ load_dotenv("dev.vars")
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Configuration for GitHub Actions Trigger
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-GITHUB_REPO = os.environ.get("GITHUB_REPO") # Format: username/repo-name
-
 @app.route('/api/python/run-likes', methods=['POST'])
 def run_likes():
     data = request.get_json()
@@ -30,32 +26,16 @@ def run_likes():
     if not post_url:
         return jsonify({"error": "post_url is required"}), 400
 
-    # If running locally without GITHUB_REPO configured, warn user
-    if not GITHUB_REPO or not GITHUB_TOKEN:
-         # Fallback to local run if dev mode (optional, but let's stick to cloud strategy)
-         return jsonify({"error": "Server configuration error: GITHUB_REPO or TOKEN missing."}), 500
-
-    # Trigger GitHub Action
     try:
-        gh_url = f"https://api.github.com/repos/{GITHUB_REPO}/dispatches"
-        headers = {
-            "Authorization": f"Bearer {GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        payload = {
-            "event_type": "run-likes",
-            "client_payload": {
-                "post_url": post_url
-            }
-        }
+        # Create Job in Queue (Status: PENDING)
+        # The Local Worker (on the user's PC) will pick this up.
+        job_id = db.create_job(post_url, status="PENDING")
         
-        response = requests.post(gh_url, json=payload, headers=headers)
-        
-        if response.status_code == 204:
-             return jsonify({"message": "✅ Job dispatched to GitHub Actions! Check logs shortly."})
+        if job_id:
+            return jsonify({"message": f"✅ Job Queued (ID: {job_id})! Your Local Worker will start processing immediately."})
         else:
-             return jsonify({"error": f"Failed to trigger GitHub: {response.text}"}), 500
-             
+            return jsonify({"error": "Failed to create job in database."}), 500
+            
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
