@@ -1,0 +1,26 @@
+{
+    "builds": [
+        {
+            "src": "app.py",
+            "use": "@vercel/python"
+        },
+        {
+            "src": "package.json",
+            "use": "@vercel/next"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/python/(.*)",
+            "dest": "/app.py"
+        },
+        {
+            "src": "/api/accounts/(.*)",
+            "dest": "/app.py"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/$1"
+        }
+    ]
+}

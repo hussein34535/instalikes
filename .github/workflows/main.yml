@@ -1,0 +1,42 @@
+name: Insta Auto Liker Job
+
+on:
+  workflow_dispatch:
+    inputs:
+      post_url:
+        description: 'Target Post URL'
+        required: true
+  repository_dispatch:
+    types: [run-likes]
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Auto Liker
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        # We can pass other env vars if needed, but DB is main one.
+      run: |
+        URL="${{ github.event.client_payload.post_url }}"
+        if [ -z "$URL" ]; then
+          URL="${{ github.event.inputs.post_url }}"
+        fi
+        
+        echo "Running for URL: $URL"
+        python run_cli.py "$URL"

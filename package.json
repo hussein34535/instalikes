@@ -1,0 +1,23 @@
+{
+  "name": "likesinstaauto",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:next dev:python",
+    "dev:next": "next dev",
+    "dev:python": ".\\\\venv\\\\Scripts\\\\python.exe app.py",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.2.3",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "14.2.3",
+    "npm-run-all": "^4.1.5"
+  }
+}
