@@ -104,7 +104,6 @@ def process_account(acc, media_id, job_id):
         db.log_event(job_id, f"[{username}] ❤️ LIKED", "SUCCESS")
         
     except Exception as e:
-    except Exception as e:
         error_str = str(e).lower()
         
         if "challenge_required" in error_str:
