@@ -65,7 +65,12 @@ def get_db_connection():
             # Extract Project ID from Hostname (e.g. db.abcdefg.supabase.co -> abcdefg)
             project_id = hostname.split('.')[1]
             pooler_username = f"{url.username}.{project_id}"
-            print(f"Pooler Authentication: Using username '{pooler_username}' for routing.")
+            
+            # Decode password (e.g. %23 -> #)
+            from urllib.parse import unquote
+            pooler_password = unquote(url.password) if url.password else None
+            
+            print(f"Pooler Authentication: User='{pooler_username}'")
 
             regions = [
                 "aws-0-us-east-1.pooler.supabase.com",      # US East (N. Virginia)
@@ -74,18 +79,22 @@ def get_db_connection():
                 "aws-0-us-west-1.pooler.supabase.com",      # US West (N. California)
                 "aws-0-sa-east-1.pooler.supabase.com",      # South America (São Paulo)
                 "aws-0-eu-west-2.pooler.supabase.com",      # EU (London)
+                "aws-0-ap-northeast-1.pooler.supabase.com", # Asia Pacific (Tokyo)
+                "aws-0-ap-south-1.pooler.supabase.com",     # Asia Pacific (Mumbai)
+                "aws-0-ca-central-1.pooler.supabase.com",   # Canada (Central)
+                "aws-0-ap-southeast-2.pooler.supabase.com", # Asia Pacific (Sydney)
             ]
             
             for pooler_host in regions:
-                print(f"Trying Pooler: {pooler_host} (Port 6543)...")
+                print(f"Trying Pooler: {pooler_host} (Port 5432)...")
                 try:
                     # Note: Poolers usually run on 6543 (Transaction) or 5432 (Session)
-                    # We try 6543 first as it's the standard for serverless
+                    # We try 5432 (Session) first
                     conn = psycopg2.connect(
                         host=pooler_host,
                         user=pooler_username, # MUST be user.project_ref for poolers
-                        password=url.password,
-                        port=5432, # Trying session mode port first on pooler host
+                        password=pooler_password, # Use decoded password
+                        port=5432, 
                         dbname="postgres", # Poolers usually expect 'postgres' or explicit db name
                         sslmode='require',
                         connect_timeout=3
