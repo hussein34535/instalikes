@@ -154,5 +154,36 @@ def stop_check_endpoint():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# --- Email Generator Endpoint ---
+@app.route('/api/utils/generate-email', methods=['POST'])
+def generate_email_endpoint():
+    try:
+        count = request.json.get('count', 1)
+        import requests, random, string
+        
+        BASE_URL = "https://api.mail.tm"
+        
+        # Get Domain
+        r = requests.get(f"{BASE_URL}/domains")
+        if r.status_code != 200:
+             return jsonify({"error": "Failed to fetch domains"}), 500
+        domain = r.json()['hydra:member'][0]['domain']
+        
+        generated = []
+        for _ in range(count):
+             username = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+             password = "Pass" + ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+             email = f"{username}@{domain}"
+             
+             # Create
+             payload = {"address": email, "password": password}
+             r_cre = requests.post(f"{BASE_URL}/accounts", json=payload)
+             if r_cre.status_code == 201:
+                 generated.append({"email": email, "password": password})
+        
+        return jsonify(generated)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(port=5353, debug=True)
