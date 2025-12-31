@@ -414,84 +414,140 @@ export default function Home() {
                 ></textarea>
               </div>
             </div>
-          )}
 
-          {activeTab === 'accounts' && (
-            <div className="glass-panel">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0 }}>Account Lab</h3>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="btn btn-danger btn-sm" onClick={deleteAllAccounts} style={{ fontWeight: 'bold' }}>Delete ALL 🗑️</button>
-                  <button className="btn btn-warning btn-sm" onClick={fetchAccountList}>Refresh List 🔄</button>
-                </div>
+              {/* Inbox Checker Section */}
+          <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '1px solid #334155' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#60a5fa' }}>📩 Inbox Checker (Get Verification Code)</h3>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'end', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#94a3b8' }}>Email</label>
+                <input type="text" id="checkEmail" placeholder="user@domain.com" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white' }} />
               </div>
-
-              <div style={{ overflowX: 'auto' }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Account</th>
-                      <th>Status</th>
-                      <th>Last Used</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.isArray(accountList) && accountList.map(acc => (
-                      <tr key={acc.id}>
-                        <td style={{ fontFamily: 'monospace' }}>{acc.username}</td>
-                        <td><span className={`status-badge status-${acc.status}`}>{acc.status}</span></td>
-                        <td>{acc.last_used ? new Date(acc.last_used).toLocaleTimeString() : '-'}</td>
-                        <td style={{ display: 'flex', gap: '8px' }}>
-                          {acc.status === 'WAITING_FOR_CODE' && (
-                            <button className="btn btn-warning btn-sm" onClick={() => setFixModal({ show: true, username: acc.username, code: '' })}>Enter Code 🔑</button>
-                          )}
-                          <button className="btn btn-danger btn-sm" onClick={() => deleteAccount(acc.username)}>Del</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {!Array.isArray(accountList) && <tr><td colSpan="4" style={{ textAlign: "center", padding: "20px", color: "var(--error)" }}>Data Error: Backend returned invalid format.</td></tr>}
-                    {Array.isArray(accountList) && accountList.length === 0 && <tr><td colSpan="4" style={{ textAlign: "center", padding: "20px" }}>No accounts found. Upload some!</td></tr>}
-                  </tbody>
-                </table>
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#94a3b8' }}>Password</label>
+                <input type="text" id="checkPass" placeholder="e.g. Pass123" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white' }} />
               </div>
+              <button className="btn" style={{ background: '#3b82f6', height: '42px' }} onClick={async () => {
+                const email = document.getElementById('checkEmail').value;
+                const password = document.getElementById('checkPass').value;
+                const resDiv = document.getElementById('inboxResult');
+                resDiv.innerHTML = "Checking...";
 
-              <hr style={{ borderColor: '#334155', margin: '30px 0' }} />
+                try {
+                  const res = await fetch('/api/utils/check-inbox', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                  });
+                  const msgs = await res.json();
+                  if (msgs.error) throw new Error(msgs.error);
 
-              <h3 style={{ marginTop: 0 }}>Upload New Accounts</h3>
-              <textarea
-                rows={5}
-                value={accountsText}
-                onChange={(e) => setAccountsText(e.target.value)}
-                placeholder={"user1:pass1\nuser2:pass2:http://ip:port..."}
-                style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: '15px' }}
-              />
-              <button className="btn btn-success" onClick={handleUpload}>Upload Accounts</button>
-              {uploadMessage && <span style={{ marginLeft: '10px', color: uploadMessage.includes('Error') ? '#ef4444' : '#4ade80' }}>{uploadMessage}</span>}
+                  if (msgs.length === 0) {
+                    resDiv.innerHTML = "📭 Inbox is empty.";
+                  } else {
+                    let html = "";
+                    msgs.forEach(m => {
+                      html += `<div style="background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 5px; border-radius: 5px;">
+                                                <div style="font-weight:bold; color: #fbbf24">${m.subject || '(No Subject)'}</div>
+                                                <div style="font-size: 12px; color: #94a3b8">From: ${m.from.address}</div>
+                                                <div style="margin-top:5px;">${m.intro || '...'}</div>
+                                              </div>`;
+                    });
+                    resDiv.innerHTML = html;
+                  }
+                } catch (e) {
+                  resDiv.innerHTML = "❌ Error: " + e.message;
+                }
+              }}>
+                Check Inbox 📥
+              </button>
             </div>
-          )}
-        </main>
-      </div>
 
-      {fixModal.show && (
-        <div className="modal-overlay">
-          <div className="glass-panel" style={{ width: '400px', background: '#1e293b' }}>
-            <h3>Fix Account: {fixModal.username}</h3>
-            <p>Instagram sent a code to the email/phone associated with this account. Enter it below:</p>
-            <input
-              type="text"
-              placeholder="123456"
-              value={fixModal.code}
-              onChange={(e) => setFixModal({ ...fixModal, code: e.target.value })}
-              style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white', fontSize: '24px', textAlign: 'center', letterSpacing: '5px', marginBottom: '20px' }}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn" style={{ flex: 1 }} onClick={submitCode}>Submit Code</button>
-              <button className="btn btn-danger" onClick={() => setFixModal({ show: false, username: '', code: '' })}>Cancel</button>
+            <div id="inboxResult" style={{ marginTop: '15px', padding: '15px', background: '#0f0f0f', borderRadius: '8px', border: '1px solid #334155', minHeight: '50px', color: '#e2e8f0', fontFamily: 'monospace' }}>
+              Ready to check.
             </div>
           </div>
+      </div>
+          )}
+
+      {activeTab === 'accounts' && (
+        <div className="glass-panel">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ marginTop: 0 }}>Account Lab</h3>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn btn-danger btn-sm" onClick={deleteAllAccounts} style={{ fontWeight: 'bold' }}>Delete ALL 🗑️</button>
+              <button className="btn btn-warning btn-sm" onClick={fetchAccountList}>Refresh List 🔄</button>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Status</th>
+                  <th>Last Used</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(accountList) && accountList.map(acc => (
+                  <tr key={acc.id}>
+                    <td style={{ fontFamily: 'monospace' }}>{acc.username}</td>
+                    <td><span className={`status-badge status-${acc.status}`}>{acc.status}</span></td>
+                    <td>{acc.last_used ? new Date(acc.last_used).toLocaleTimeString() : '-'}</td>
+                    <td style={{ display: 'flex', gap: '8px' }}>
+                      {acc.status === 'WAITING_FOR_CODE' && (
+                        <button className="btn btn-warning btn-sm" onClick={() => setFixModal({ show: true, username: acc.username, code: '' })}>Enter Code 🔑</button>
+                      )}
+                      <button className="btn btn-danger btn-sm" onClick={() => deleteAccount(acc.username)}>Del</button>
+                    </td>
+                  </tr>
+                ))}
+                {!Array.isArray(accountList) && <tr><td colSpan="4" style={{ textAlign: "center", padding: "20px", color: "var(--error)" }}>Data Error: Backend returned invalid format.</td></tr>}
+                {Array.isArray(accountList) && accountList.length === 0 && <tr><td colSpan="4" style={{ textAlign: "center", padding: "20px" }}>No accounts found. Upload some!</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <hr style={{ borderColor: '#334155', margin: '30px 0' }} />
+
+          <h3 style={{ marginTop: 0 }}>Upload New Accounts</h3>
+          <textarea
+            rows={5}
+            value={accountsText}
+            onChange={(e) => setAccountsText(e.target.value)}
+            placeholder={"user1:pass1\nuser2:pass2:http://ip:port..."}
+            style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white', fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: '15px' }}
+          />
+          <button className="btn btn-success" onClick={handleUpload}>Upload Accounts</button>
+          {uploadMessage && <span style={{ marginLeft: '10px', color: uploadMessage.includes('Error') ? '#ef4444' : '#4ade80' }}>{uploadMessage}</span>}
         </div>
       )}
+    </main >
+      </div >
+
+  {
+    fixModal.show && (
+      <div className="modal-overlay">
+        <div className="glass-panel" style={{ width: '400px', background: '#1e293b' }}>
+          <h3>Fix Account: {fixModal.username}</h3>
+          <p>Instagram sent a code to the email/phone associated with this account. Enter it below:</p>
+          <input
+            type="text"
+            placeholder="123456"
+            value={fixModal.code}
+            onChange={(e) => setFixModal({ ...fixModal, code: e.target.value })}
+            style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white', fontSize: '24px', textAlign: 'center', letterSpacing: '5px', marginBottom: '20px' }}
+          />
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn" style={{ flex: 1 }} onClick={submitCode}>Submit Code</button>
+            <button className="btn btn-danger" onClick={() => setFixModal({ show: false, username: '', code: '' })}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
     </>
   );
 }

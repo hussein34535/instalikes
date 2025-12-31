@@ -15,12 +15,32 @@ import api.python.database as db
 new_accounts_list = [
 ]
 
-PASSWORD = "123123yy"
-
 # Prepare data structure
-# Remove duplicates (set) then update
-unique_emails = list(set(new_accounts_list))
-accounts_data = [{"username": email, "password": PASSWORD} for email in unique_emails]
+accounts_data = []
+
+# Remove duplicates (set) - cautious with objects, so we process list
+processed_emails = set()
+
+for item in new_accounts_list:
+    item = item.strip()
+    if not item: continue
+    
+    # Check for email:password format
+    if ":" in item:
+        parts = item.split(":")
+        email = parts[0].strip()
+        pwd = parts[1].strip()
+    else:
+        print(f"⚠️ Skipping '{item}': No password provided (Format: email:password)")
+        continue
+        
+    if email in processed_emails:
+        continue
+        
+    processed_emails.add(email)
+    accounts_data.append({"username": email, "password": pwd})
+
+# US Proxies provided by user
 
 # US Proxies provided by user
 proxies_list = [
