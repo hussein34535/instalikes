@@ -1,248 +1,129 @@
-import sqlite3
 import os
-import sys
-import time
+import requests
 import json
+import time
 from datetime import datetime
 
-# Try importing psycopg2 (PostgreSQL adapter)
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    PSYCOPG2_AVAILABLE = True
-except ImportError:
-    PSYCOPG2_AVAILABLE = False
+# --- Configuration ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "jobs.db")
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# For local testing fallback (local dev) if vars are missing
+if not SUPABASE_URL:
+    print("[WARNING] SUPABASE_URL not set!")
+if not SUPABASE_KEY:
+    print("[WARNING] SUPABASE_KEY not set!")
 
-def get_db_type():
-    if DATABASE_URL and PSYCOPG2_AVAILABLE:
-        return "POSTGRES"
-    return "SQLITE"
+def _get_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"  # Default prefer
+    }
 
-def get_db_connection():
-    db_type = get_db_type()
-    if db_type == "POSTGRES":
-        try:
-            # Parse URL
-            from urllib.parse import urlparse
-            import dns.resolver
-            
-            url = urlparse(DATABASE_URL)
-            hostname = url.hostname
-            
-            # Use Google DNS (8.8.8.8) to bypass local resolver issues
-            print(f"Resolving {hostname} using Google DNS (8.8.8.8)...")
-            resolver = dns.resolver.Resolver()
-            resolver.nameservers = ['8.8.8.8', '8.8.4.4']
-            
-            ipv4_ip = None
-            try:
-                answer = resolver.resolve(hostname, 'A')
-                ipv4_ip = answer[0].to_text()
-                print(f"Resolved to IPv4: {ipv4_ip}")
-            except Exception as e:
-                 print(f"Google DNS failed for direct host: {e}")
+def _get_url(table):
+    # Remove trailing slash from URL if present
+    base = SUPABASE_URL.rstrip('/')
+    return f"{base}/rest/v1/{table}"
 
-            if ipv4_ip:
-                 # Standard Connect
-                 conn = psycopg2.connect(
-                    host=ipv4_ip,
-                    user=url.username,
-                    password=url.password,
-                    port=url.port,
-                    dbname=url.path[1:],
-                    sslmode='require'
-                 )
-                 return conn
-            
-            # --- AUTO-DISCOVERY FALLBACK ---
-            # If we reach here, the direct host has NO IPv4 address.
-            # We must try standard Supabase Transaction Poolers (IPv4 compatible)
-            print("Direct Host has no IPv4. Attempting Regional Pooler Auto-Discovery...")
-            
-            # Extract Project ID from Hostname (e.g. db.abcdefg.supabase.co -> abcdefg)
-            project_id = hostname.split('.')[1]
-            pooler_username = f"{url.username}.{project_id}"
-            
-            # Decode password (e.g. %23 -> #)
-            from urllib.parse import unquote
-            pooler_password = unquote(url.password) if url.password else None
-            
-            print(f"Pooler Authentication: User='{pooler_username}'")
-
-            regions = [
-                "aws-0-us-east-1.pooler.supabase.com",      # US East (N. Virginia)
-                "aws-0-eu-central-1.pooler.supabase.com",   # EU (Frankfurt)
-                "aws-0-ap-southeast-1.pooler.supabase.com", # Asia Pacific (Singapore)
-                "aws-0-us-west-1.pooler.supabase.com",      # US West (N. California)
-                "aws-0-sa-east-1.pooler.supabase.com",      # South America (São Paulo)
-                "aws-0-eu-west-2.pooler.supabase.com",      # EU (London)
-                "aws-0-ap-northeast-1.pooler.supabase.com", # Asia Pacific (Tokyo)
-                "aws-0-ap-south-1.pooler.supabase.com",     # Asia Pacific (Mumbai)
-                "aws-0-ca-central-1.pooler.supabase.com",   # Canada (Central)
-                "aws-0-ap-southeast-2.pooler.supabase.com", # Asia Pacific (Sydney)
-            ]
-            
-            for pooler_host in regions:
-                print(f"Trying Pooler: {pooler_host} (Port 5432)...")
-                try:
-                    # Note: Poolers usually run on 6543 (Transaction) or 5432 (Session)
-                    # We try 5432 (Session) first
-                    conn = psycopg2.connect(
-                        host=pooler_host,
-                        user=pooler_username, # MUST be user.project_ref for poolers
-                        password=pooler_password, # Use decoded password
-                        port=5432, 
-                        dbname="postgres", # Poolers usually expect 'postgres' or explicit db name
-                        sslmode='require',
-                        connect_timeout=3
-                    )
-                    print(f"SUCCESS! Connected via {pooler_host}")
-                    return conn
-                except Exception as pool_err:
-                     print(f"Failed {pooler_host}: {pool_err}")
-                     
-            raise Exception("Could not find a working IPv4 connection to Supabase.")
-
-        except Exception as e:
-            print(f"Connection Logic Failed: {e}")
-            raise e
-    else:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-def get_placeholder():
-    """Returns '?' for SQLite and '%s' for Postgres"""
-    return "%s" if get_db_type() == "POSTGRES" else "?"
+# --- Tables ---
+# jobs, logs, accounts
 
 def init_db():
-    conn = get_db_connection()
-    c = conn.cursor()
-    db_type = get_db_type()
-    
-    # DataType Adjustments
-    serial_type = "SERIAL" if db_type == "POSTGRES" else "INTEGER"
-    pk_def = "PRIMARY KEY" if db_type == "POSTGRES" else "PRIMARY KEY AUTOINCREMENT"
-    
-    # Jobs table
-    c.execute(f'''
-        CREATE TABLE IF NOT EXISTS jobs (
-            id {serial_type} {pk_def},
-            target_url TEXT NOT NULL,
-            status TEXT DEFAULT 'RUNNING',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP
-        )
-    ''')
-
-    # Logs table
-    c.execute(f'''
-        CREATE TABLE IF NOT EXISTS logs (
-            id {serial_type} {pk_def},
-            job_id INTEGER,
-            level TEXT DEFAULT 'INFO',
-            message TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    # Note: Foreign key constraints syntax differs slightly or requires enabling in SQLite, 
-    # keeping it simple/loose for compatibility here.
-    
-    # Accounts table
-    c.execute(f'''
-        CREATE TABLE IF NOT EXISTS accounts (
-            id {serial_type} {pk_def},
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            proxy TEXT,
-            status TEXT DEFAULT 'ACTIVE',
-            last_used TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    # REST API cannot create tables on the fly.
+    # User must run the SQL schema in Dashboard.
+    pass
 
 # --- Job/Log Functions ---
 
 def create_job(target_url):
-    init_db()
-    conn = get_db_connection()
-    c = conn.cursor()
-    p = get_placeholder()
+    url = _get_url("jobs")
+    headers = _get_headers()
     
-    query = f'INSERT INTO jobs (target_url, status) VALUES ({p}, {p})'
-    if get_db_type() == "POSTGRES":
-        query += " RETURNING id"
-        c.execute(query, (target_url, 'RUNNING'))
-        job_id = c.fetchone()[0]
-    else:
-        c.execute(query, (target_url, 'RUNNING'))
-        job_id = c.lastrowid
-        
-    conn.commit()
-    conn.close()
-    return job_id
+    payload = {
+        "target_url": target_url,
+        "status": "RUNNING"
+    }
+    
+    try:
+        r = requests.post(url, headers=headers, json=payload)
+        r.raise_for_status()
+        data = r.json()
+        if data and len(data) > 0:
+            return data[0]['id']
+        return None
+    except Exception as e:
+        print(f"Error creating job: {e}")
+        return None
 
 def update_job_status(job_id, status):
-    conn = get_db_connection()
-    c = conn.cursor()
-    p = get_placeholder()
+    url = _get_url("jobs") + f"?id=eq.{job_id}"
+    headers = _get_headers()
     
+    payload = {"status": status}
     if status in ['COMPLETED', 'FAILED']:
-        c.execute(f'UPDATE jobs SET status = {p}, completed_at = CURRENT_TIMESTAMP WHERE id = {p}', (status, job_id))
-    else:
-        c.execute(f'UPDATE jobs SET status = {p} WHERE id = {p}', (status, job_id))
-    conn.commit()
-    conn.close()
+        payload['completed_at'] = datetime.utcnow().isoformat()
+        
+    try:
+        r = requests.patch(url, headers=headers, json=payload)
+        r.raise_for_status()
+    except Exception as e:
+        print(f"Error updating job {job_id}: {e}")
 
 def log_event(job_id, message, level='INFO'):
-    conn = get_db_connection()
-    c = conn.cursor()
-    p = get_placeholder()
+    url = _get_url("logs")
+    headers = _get_headers()
     
-    c.execute(f'INSERT INTO logs (job_id, message, level) VALUES ({p}, {p}, {p})', (job_id, message, level))
-    conn.commit()
-    conn.close()
+    payload = {
+        "job_id": job_id,
+        "message": message,
+        "level": level
+    }
+    
+    try:
+        r = requests.post(url, headers=headers, json=payload)
+        # We don't necessarily need to raise here to avoid crashing the bot on log failure
+        if r.status_code >= 400:
+             print(f"Failed to log: {r.text}")
+    except Exception as e:
+        print(f"Error logging event: {e}")
+    
     # Print for server logs
     print(f"[{level}] {message}")
 
 def get_latest_job_logs(limit=50):
-    init_db()
-    conn = get_db_connection()
+    headers = _get_headers()
     
-    # Handle cursor type for dictionary access
-    if get_db_type() == "POSTGRES":
-        c = conn.cursor(cursor_factory=RealDictCursor)
-    else:
-        c = conn.cursor()
+    # 1. Get latest job
+    try:
+        job_url = _get_url("jobs") + "?select=*&order=id.desc&limit=1"
+        r = requests.get(job_url, headers=headers)
+        r.raise_for_status()
+        jobs = r.json()
         
-    c.execute('SELECT * FROM jobs ORDER BY id DESC LIMIT 1')
-    job = c.fetchone()
-    
-    if not job:
-        conn.close()
-        return {"status": "No jobs run yet.", "logs": [], "job": None}
-    
-    job_id = job['id']
-    job_status = job['status']
-    target_url = job['target_url']
-    
-    p = get_placeholder()
-    c.execute(f'SELECT * FROM logs WHERE job_id = {p} ORDER BY id ASC', (job_id,))
-    logs = [dict(row) for row in c.fetchall()]
-    
-    conn.close()
-    return {
-        "job_id": job_id,
-        "status": job_status,
-        "target": target_url,
-        "logs": [f"[{l['timestamp']}] [{l['level']}] {l['message']}" for l in logs]
-    }
+        if not jobs:
+            return {"status": "No jobs run yet.", "logs": [], "job": None}
+            
+        job = jobs[0]
+        job_id = job['id']
+        
+        # 2. Get logs for this job
+        logs_url = _get_url("logs") + f"?select=*&job_id=eq.{job_id}&order=id.asc"
+        r_logs = requests.get(logs_url, headers=headers)
+        r_logs.raise_for_status()
+        logs_data = r_logs.json()
+        
+        return {
+            "job_id": job_id,
+            "status": job['status'],
+            "target": job['target_url'],
+            "logs": [f"[{l['timestamp']}] [{l['level']}] {l['message']}" for l in logs_data]
+        }
+        
+    except Exception as e:
+        print(f"Error fetching logs: {e}")
+        return {"status": "Error", "logs": [str(e)], "job": None}
 
 # --- Account Functions ---
 
@@ -250,74 +131,84 @@ def add_accounts_bulk(accounts_list):
     """
     accounts_list: list of dicts {username, password, proxy (optional)}
     """
-    init_db()
-    conn = get_db_connection()
-    c = conn.cursor()
-    p = get_placeholder()
+    url = _get_url("accounts")
+    headers = _get_headers()
+    # Merge duplicates (Upsert)
+    headers["Prefer"] = "resolution=merge-duplicates, return=representation"
     
-    added_count = 0
-    updated_count = 0
-    
+    # Add default status if missing
+    payloads = []
     for acc in accounts_list:
-        try:
-            c.execute(f"SELECT id FROM accounts WHERE username = {p}", (acc['username'],))
-            existing = c.fetchone()
-            
-            proxy = acc.get('proxy', None)
-            
-            if existing:
-                c.execute(f"UPDATE accounts SET password = {p}, proxy = {p}, status = 'ACTIVE' WHERE username = {p}", 
-                          (acc['password'], proxy, acc['username']))
-                updated_count += 1
-            else:
-                c.execute(f"INSERT INTO accounts (username, password, proxy) VALUES ({p}, {p}, {p})", 
-                          (acc['username'], acc['password'], proxy))
-                added_count += 1
-        except Exception as e:
-            print(f"Error adding account {acc.get('username')}: {e}")
-            
-    conn.commit()
-    conn.close()
-    return {"added": added_count, "updated": updated_count}
+        item = {
+            "username": acc['username'],
+            "password": acc['password'],
+            "proxy": acc.get('proxy'),
+            "status": "ACTIVE"
+        }
+        payloads.append(item)
+        
+    if not payloads:
+        return {"added": 0, "updated": 0}
+
+    try:
+        r = requests.post(url, headers=headers, json=payloads)
+        r.raise_for_status()
+        data = r.json()
+        # Count is tricky with upsert in one go via REST.
+        # But we know how many we sent. REST returns the rows processed (inserted or updated).
+        # We can just say "Processed X accounts".
+        return {"added": len(data), "updated": 0} # Simplified stats for REST
+    except Exception as e:
+        print(f"Error adding accounts: {e}")
+        return {"added": 0, "updated": 0, "error": str(e)}
 
 def get_active_accounts(limit=1000):
-    init_db()
-    conn = get_db_connection()
-    if get_db_type() == "POSTGRES":
-        c = conn.cursor(cursor_factory=RealDictCursor)
-    else:
-        c = conn.cursor()
-        
-    p = get_placeholder()
-    c.execute(f"SELECT * FROM accounts WHERE status = 'ACTIVE' LIMIT {p}", (limit,))
-    rows = [dict(row) for row in c.fetchall()]
-    conn.close()
-    return rows
+    url = _get_url("accounts") + f"?select=*&status=eq.ACTIVE&limit={limit}"
+    headers = _get_headers()
+    
+    try:
+        r = requests.get(url, headers=headers)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"Error fetching accounts: {e}")
+        return []
 
 def update_account_status(username, status):
-    conn = get_db_connection()
-    c = conn.cursor()
-    p = get_placeholder()
-    c.execute(f"UPDATE accounts SET status = {p}, last_used = CURRENT_TIMESTAMP WHERE username = {p}", (status, username))
-    conn.commit()
-    conn.close()
+    url = _get_url("accounts") + f"?username=eq.{username}"
+    headers = _get_headers()
+    
+    payload = {
+        "status": status,
+        "last_used": datetime.utcnow().isoformat()
+    }
+    
+    try:
+        requests.patch(url, headers=headers, json=payload)
+    except Exception as e:
+        print(f"Error updating account {username}: {e}")
 
 def get_account_stats():
-    init_db()
-    conn = get_db_connection()
-    if get_db_type() == "POSTGRES":
-        c = conn.cursor(cursor_factory=RealDictCursor)
-    else:
-        c = conn.cursor()
-        
-    c.execute("SELECT COUNT(*) as total FROM accounts")
-    total = c.fetchone()['total']
+    # Use HEAD requests with Count header for efficiency
+    base_url = _get_url("accounts")
+    headers = _get_headers()
+    headers['Prefer'] = 'count=exact'
     
-    c.execute("SELECT COUNT(*) as active FROM accounts WHERE status = 'ACTIVE'")
-    active = c.fetchone()['active']
+    def get_count(query_param=""):
+        try:
+            url = base_url + query_param
+            r = requests.head(url, headers=headers)
+            # Count returned in Content-Range: 0-24/25 -> Total 25
+            # Or simplified: if we query for range 0-0, content-range format is '0-0/Total'
+            cr = r.headers.get("Content-Range")
+            if cr:
+                return int(cr.split('/')[-1])
+            return 0
+        except:
+            return 0
+
+    total = get_count("?select=id&limit=1")
+    active = get_count("?select=id&status=eq.ACTIVE&limit=1")
+    banned = get_count("?select=id&status=in.(BANNED,CHALLENGE)&limit=1")
     
-    c.execute("SELECT COUNT(*) as banned FROM accounts WHERE status = 'BANNED' OR status = 'CHALLENGE'")
-    banned = c.fetchone()['banned']
-    
-    conn.close()
     return {"total": total, "active": active, "banned": banned}
