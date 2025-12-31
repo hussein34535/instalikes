@@ -354,7 +354,7 @@ export default function Home() {
             </div>
           )}
 
-          )}
+
 
           {activeTab === 'generator' && (
             <div className="glass-panel" style={{ padding: '30px' }}>
