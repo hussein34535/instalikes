@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+import time
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -10,59 +11,41 @@ load_dotenv("dev.vars")
 
 import api.python.database as db
 
-accounts_data = [
-    {"username": "elkozb@telegmail.com", "password": "haha77"},
-    {"username": "feiyellivause-3318loy@yopmail.com", "password": "haha7#"},
-    {"username": "tannacikicrou-7592kyr@yopmail.com", "password": "haha7#"},
-    {"username": "louttetroimoma-8404ntrh@yopmail.com", "password": "haha7#"},
-    {"username": "xeicreutassoba-2514df@yopmail.com", "password": "haha7#"},
-    {"username": "frelijacraha-4919cbj@yopmail.com", "password": "haha7#"},
-    {"username": "weijilovije-2126fhi@yopmail.com", "password": "haha7#"},
-    {"username": "groupafefeitrei-8404dhj@yopmail.com", "password": "haha7#"},
-    {"username": "quavedebeucri-9423khd@yopmail.com", "password": "haha7#"},
-    {"username": "lafohogrede-2475iyc@yopmail.com", "password": "haha7#"},
-    {"username": "yugunnaquoizu-3587floj@yopmail.com", "password": "haha7#"},
-    {"username": "lattauppucico-2143kliu@yopmail.com", "password": "haha7#"},
-    {"username": "quiprollebripu-1293lkf@yopmail.com", "password": "haha7#"},
-    {"username": "magewuvatte-1342blk@yopmail.com", "password": "haha7#"},
-    {"username": "roinnoubumebro-6151hgd@yopmail.com", "password": "haha7#"},
-    # Duplicate removed implicitly by logic or DB constraint
-    {"username": "rutregagrussa-6357lkj@yopmail.com", "password": "haha7#"},
-    {"username": "kiqueiwautobro-5044kug@yopmail.com", "password": "haha7#"},
-    {"username": "tamonafreli-1173csdg@yopmail.com", "password": "haha7#"},
-    {"username": "gauttuttohoubri-7319jhg@yopmail.com", "password": "haha7#"},
-    {"username": "sauhozissoquo-4430loug@yopmail.com", "password": "haha7#"},
-    {"username": "jalevaxiti-5196luyg@yopmail.com", "password": "haha7#"},
-    {"username": "trikaruzamma-2961liuv@yopmail.com", "password": "haha7#"},
-    {"username": "xefruppoitreukei-7722liuh@yopmail.com", "password": "haha7#"},
-    {"username": "grehaddossaunei-7257liy@yopmail.com", "password": "haha7#"},
-    {"username": "sofrebraxaxu-1407mhv@yopmail.com", "password": "haha7#"},
-    {"username": "xiyimoxege-8134liyg@yopmail.com", "password": "haha7#"},
-    {"username": "labetinado-8373loih@yopmail.com", "password": "haha7#"},
-    {"username": "prigeuzigezoi-1089liu@yopmail.com", "password": "haha7#"},
-    {"username": "proiweleigrene-6971ngx@yopmail.com", "password": "haha7#"},
-    {"username": "trougricoreila-9463dgh@yopmail.com", "password": "haha7#"},
-    {"username": "bapoxenimmu-8819liuh@yopmail.com", "password": "haha7#"},
-    {"username": "sallennakeussi-8413liyv@yopmail.com", "password": "haha7#"},
-    {"username": "resazebrennou-9828kyrf@yopmail.com", "password": "haha7#"},
-    {"username": "pegreuprauyoffe-4140ligb@yopmail.com", "password": "haha7#"},
-    {"username": "pufoppeufraru-9210lijv@yopmail.com", "password": "haha7#"},
-    {"username": "breffelloicrexa-4310lfs@yopmail.com", "password": "haha7#"},
-    {"username": "kouleifallecroi-1692luh@yopmail.com", "password": "haha7#"},
-    {"username": "woixoifappoute-8502lih@yopmail.com", "password": "haha7#"},
-    {"username": "jebuvarayo-9190lkh@yopmail.com", "password": "haha7#"},
-    {"username": "braffippoffaqueu-9560lhb@yopmail.com", "password": "haha7#"},
-    {"username": "jeunnollussopre-8370igu@yopmail.com", "password": "haha7#"},
-    {"username": "moubrajossauza-5757jfuh@yopmail.com", "password": "haha7#"},
-    {"username": "crixeubreuceffeu-8811lfur@yopmail.com", "password": "haha7#"},
-    {"username": "trehetripaffeu-3411kyt@yopmail.com", "password": "haha7#"},
-    {"username": "bupiwelougrau-8656liyf@yopmail.com", "password": "haha7#"},
-    {"username": "caroipaqueizo-4381hgd@yopmail.com", "password": "haha7#"},
-    {"username": "bahoimmoukaufi-8100jhg@yopmail.com", "password": "haha7#"},
-    {"username": "woxeyixillo-7342kyt@yopmail.com", "password": "haha7#"},
-    {"username": "lauzameilibre-9969kyg@yopmail.com", "password": "haha7#"},
-    {"username": "veihasufabu-6179hiyg@yopmail.com", "password": "haha7#"}
+# Top-level list of new accounts
+new_accounts_list = [
+    "lranpbx@telegmail.com", "qhvnh@telegmail.com", "joxnlx@telegmail.com", "dhivk@telegmail.com",
+    "nmevfn@telegmail.com", "jnxls@telegmail.com", "nmevfn@telegmail.com", "fzplmcfj@telegmail.com",
+    "ancucet@telegmail.com", "sbddsi@telegmail.com", "jrwmuep@telegmail.com", "gacwzrg@telegmail.com",
+    "ipukta@telegmail.com", "tnkuzk@telegmail.com", "wlieshc@telegmail.com", "dysasky@telegmail.com",
+    "aitspi@telegmail.com", "jqlri@telegmail.com", "iawfyl@telegmail.com", "oacucp@telegmail.com",
+    "whdah@telegmail.com", "rnuure@telegmail.com", "zylyzd@telegmail.com", "zthki@telegmail.com",
+    "ouzva@telegmail.com", "jcbvn@telegmail.com", "qnjwpd@telegmail.com", "eguour@telegmail.com",
+    "anspefss@telegmail.com", "whdah@telegmail.com", "tnkuzk@telegmail.com", "ouzva@telegmail.com",
+    "oacucp@telegmail.com", "jnxls@telegmail.com", "mpnjajdx@telegmail.com", "iofxsnau@telegmail.com",
+    "piknh@telegmail.com", "svoqxdmi@telegmail.com", "gacwzrg@telegmail.com", "jqlri@telegmail.com",
+    "wlieshc@telegmail.com", "dysasky@telegmail.com", "aitspi@telegmail.com", "jrwmuep@telegmail.com",
+    "ipukta@telegmail.com", "vinarzpu@telegmail.com", "fyoijttg@telegmail.com", "zhplsxjn@telegmail.com",
+    "joxnlx@telegmail.com", "nmevfn@telegmail.com", "sbddsi@telegmail.com", "ancucet@telegmail.com",
+    "fzplmcfj@telegmail.com", "iawfyl@telegmail.com", "zylyzd@telegmail.com", "qnjwpd@telegmail.com",
+    "rnuure@telegmail.com", "zthki@telegmail.com", "anspefss@telegmail.com", "lranpbx@telegmail.com",
+    "piknh@telegmail.com", "jcbvn@telegmail.com", "iofxsnau@telegmail.com", "jrxmz@telegmail.com",
+    "mpnjajdx@telegmail.com", "jcbvn@telegmail.com", "gvyvz@telegmail.com", "afsruu@telegmail.com",
+    "svoqxdmi@telegmail.com", "eguour@telegmail.com", "ykmiq@telegmail.com", "swolniwn@telegmail.com",
+    "svoqxdmi@telegmail.com", "suhraq@telegmail.com", "qkqwa@telegmail.com", "vinarzpu@telegmail.com",
+    "jnxls@telegmail.com", "ahbza@telegmail.com", "hgewgs@telegmail.com", "tdechmk@telegmail.com",
+    "wzdnjtf@telegmail.com", "zlgbzunx@telegmail.com", "fxaynfk@telegmail.com", "znddrs@telegmail.com",
+    "yjeeldpc@telegmail.com", "phjknjy@telegmail.com", "kuaatt@telegmail.com", "xcpwz@telegmail.com",
+    "kjwnvs@telegmail.com", "igrzfeg@telegmail.com", "dklccw@telegmail.com", "wgvsjx@telegmail.com",
+    "yvdqz@telegmail.com", "iytqzcpx@telegmail.com", "yhsgq@telegmail.com", "rxyjalcl@telegmail.com",
+    "wdltpdkg@telegmail.com", "kuqrc@telegmail.com", "vvjqc@telegmail.com", "avozqrv@telegmail.com"
 ]
+
+PASSWORD = "123123yy"
+
+# Prepare data structure
+# Remove duplicates (set) then update
+unique_emails = list(set(new_accounts_list))
+accounts_data = [{"username": email, "password": PASSWORD} for email in unique_emails]
 
 # US Proxies provided by user
 proxies_list = [
@@ -79,6 +62,10 @@ proxies_list = [
 for i, acc in enumerate(accounts_data):
     acc["proxy"] = proxies_list[i % len(proxies_list)]
 
-print(f"Importing {len(accounts_data)} accounts...")
+# --- EXECUTION ---
+
+print(f"📦 Preparing to import {len(accounts_data)} new accounts...")
+print("ℹ️  Existing accounts will NOT be deleted. New ones will be added.")
+
 stats = db.add_accounts_bulk(accounts_data)
-print(f"Done! Added: {stats['added']}, Updated: {stats['updated']}")
+print(f"✅ Done! Added: {stats['added']}, Updated: {stats['updated']}")
