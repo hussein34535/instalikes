@@ -36,30 +36,65 @@ def get_db_connection():
             print(f"Resolving {hostname} using Google DNS (8.8.8.8)...")
             resolver = dns.resolver.Resolver()
             resolver.nameservers = ['8.8.8.8', '8.8.4.4']
-            answer = resolver.resolve(hostname, 'A')
             
-            ipv4_ip = answer[0].to_text()
-            print(f"Resolved to IPv4: {ipv4_ip}")
-            
-            # Connect using the resolved IP
-            conn = psycopg2.connect(
-                host=ipv4_ip,
-                user=url.username,
-                password=url.password,
-                port=url.port,
-                dbname=url.path[1:],
-                sslmode='require'
-            )
-            return conn
-        except Exception as e:
-            print(f"Direct DNS Resolution failed: {e}")
-            # Fallback to standard connection
+            ipv4_ip = None
             try:
-                conn = psycopg2.connect(DATABASE_URL)
-                return conn
-            except Exception as e2:
-                print(f"Fallback connection failed: {e2}")
-                raise e2
+                answer = resolver.resolve(hostname, 'A')
+                ipv4_ip = answer[0].to_text()
+                print(f"Resolved to IPv4: {ipv4_ip}")
+            except Exception as e:
+                 print(f"Google DNS failed for direct host: {e}")
+
+            if ipv4_ip:
+                 # Standard Connect
+                 conn = psycopg2.connect(
+                    host=ipv4_ip,
+                    user=url.username,
+                    password=url.password,
+                    port=url.port,
+                    dbname=url.path[1:],
+                    sslmode='require'
+                 )
+                 return conn
+            
+            # --- AUTO-DISCOVERY FALLBACK ---
+            # If we reach here, the direct host has NO IPv4 address.
+            # We must try standard Supabase Transaction Poolers (IPv4 compatible)
+            print("Direct Host has no IPv4. Attempting Regional Pooler Auto-Discovery...")
+            
+            regions = [
+                "aws-0-us-east-1.pooler.supabase.com",      # US East (N. Virginia)
+                "aws-0-eu-central-1.pooler.supabase.com",   # EU (Frankfurt)
+                "aws-0-ap-southeast-1.pooler.supabase.com", # Asia Pacific (Singapore)
+                "aws-0-us-west-1.pooler.supabase.com",      # US West (N. California)
+                "aws-0-sa-east-1.pooler.supabase.com",      # South America (São Paulo)
+                "aws-0-eu-west-2.pooler.supabase.com",      # EU (London)
+            ]
+            
+            for pooler_host in regions:
+                print(f"Trying Pooler: {pooler_host} (Port 6543)...")
+                try:
+                    # Note: Poolers usually run on 6543 (Transaction) or 5432 (Session)
+                    # We try 6543 first as it's the standard for serverless
+                    conn = psycopg2.connect(
+                        host=pooler_host,
+                        user=url.username, # Note: Pooler usernames might need .projectref suffix, but standard direct user often works if tenant is resolved
+                        password=url.password,
+                        port=5432, # Trying session mode port first on pooler host
+                        dbname=url.path[1:],
+                        sslmode='require',
+                        connect_timeout=3
+                    )
+                    print(f"SUCCESS! Connected via {pooler_host}")
+                    return conn
+                except Exception as pool_err:
+                     print(f"Failed {pooler_host}: {pool_err}")
+                     
+            raise Exception("Could not find a working IPv4 connection to Supabase.")
+
+        except Exception as e:
+            print(f"Connection Logic Failed: {e}")
+            raise e
     else:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
