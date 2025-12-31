@@ -13,31 +13,6 @@ import api.python.database as db
 
 # Top-level list of new accounts
 new_accounts_list = [
-    "lranpbx@telegmail.com", "qhvnh@telegmail.com", "joxnlx@telegmail.com", "dhivk@telegmail.com",
-    "nmevfn@telegmail.com", "jnxls@telegmail.com", "nmevfn@telegmail.com", "fzplmcfj@telegmail.com",
-    "ancucet@telegmail.com", "sbddsi@telegmail.com", "jrwmuep@telegmail.com", "gacwzrg@telegmail.com",
-    "ipukta@telegmail.com", "tnkuzk@telegmail.com", "wlieshc@telegmail.com", "dysasky@telegmail.com",
-    "aitspi@telegmail.com", "jqlri@telegmail.com", "iawfyl@telegmail.com", "oacucp@telegmail.com",
-    "whdah@telegmail.com", "rnuure@telegmail.com", "zylyzd@telegmail.com", "zthki@telegmail.com",
-    "ouzva@telegmail.com", "jcbvn@telegmail.com", "qnjwpd@telegmail.com", "eguour@telegmail.com",
-    "anspefss@telegmail.com", "whdah@telegmail.com", "tnkuzk@telegmail.com", "ouzva@telegmail.com",
-    "oacucp@telegmail.com", "jnxls@telegmail.com", "mpnjajdx@telegmail.com", "iofxsnau@telegmail.com",
-    "piknh@telegmail.com", "svoqxdmi@telegmail.com", "gacwzrg@telegmail.com", "jqlri@telegmail.com",
-    "wlieshc@telegmail.com", "dysasky@telegmail.com", "aitspi@telegmail.com", "jrwmuep@telegmail.com",
-    "ipukta@telegmail.com", "vinarzpu@telegmail.com", "fyoijttg@telegmail.com", "zhplsxjn@telegmail.com",
-    "joxnlx@telegmail.com", "nmevfn@telegmail.com", "sbddsi@telegmail.com", "ancucet@telegmail.com",
-    "fzplmcfj@telegmail.com", "iawfyl@telegmail.com", "zylyzd@telegmail.com", "qnjwpd@telegmail.com",
-    "rnuure@telegmail.com", "zthki@telegmail.com", "anspefss@telegmail.com", "lranpbx@telegmail.com",
-    "piknh@telegmail.com", "jcbvn@telegmail.com", "iofxsnau@telegmail.com", "jrxmz@telegmail.com",
-    "mpnjajdx@telegmail.com", "jcbvn@telegmail.com", "gvyvz@telegmail.com", "afsruu@telegmail.com",
-    "svoqxdmi@telegmail.com", "eguour@telegmail.com", "ykmiq@telegmail.com", "swolniwn@telegmail.com",
-    "svoqxdmi@telegmail.com", "suhraq@telegmail.com", "qkqwa@telegmail.com", "vinarzpu@telegmail.com",
-    "jnxls@telegmail.com", "ahbza@telegmail.com", "hgewgs@telegmail.com", "tdechmk@telegmail.com",
-    "wzdnjtf@telegmail.com", "zlgbzunx@telegmail.com", "fxaynfk@telegmail.com", "znddrs@telegmail.com",
-    "yjeeldpc@telegmail.com", "phjknjy@telegmail.com", "kuaatt@telegmail.com", "xcpwz@telegmail.com",
-    "kjwnvs@telegmail.com", "igrzfeg@telegmail.com", "dklccw@telegmail.com", "wgvsjx@telegmail.com",
-    "yvdqz@telegmail.com", "iytqzcpx@telegmail.com", "yhsgq@telegmail.com", "rxyjalcl@telegmail.com",
-    "wdltpdkg@telegmail.com", "kuqrc@telegmail.com", "vvjqc@telegmail.com", "avozqrv@telegmail.com"
 ]
 
 PASSWORD = "123123yy"
@@ -64,8 +39,18 @@ for i, acc in enumerate(accounts_data):
 
 # --- EXECUTION ---
 
-print(f"📦 Preparing to import {len(accounts_data)} new accounts...")
-print("ℹ️  Existing accounts will NOT be deleted. New ones will be added.")
+# WARNING: Only set this to True if you want to wipe everything!
+DELETE_ALL_FIRST = True
 
-stats = db.add_accounts_bulk(accounts_data)
-print(f"✅ Done! Added: {stats['added']}, Updated: {stats['updated']}")
+if DELETE_ALL_FIRST:
+    print("🗑️  Deleting ALL accounts from Database as requested...")
+    # There is no direct "delete_all" in `database.py`, but we can fetch all and delete one by one
+    # OR better: implement `delete_all_accounts()` in `database.py` or just loop here.
+    # Since we want to be safe, let's fetch and delete.
+    all_accs = db.get_all_accounts(limit=1000)
+    for acc in all_accs:
+        db.delete_account(acc['username'])
+        print(f"   - Deleted {acc['username']}")
+    print("✨ Database Cleared.")
+
+print(f"📦 Preparing to import {len(accounts_data)} new accounts...")
