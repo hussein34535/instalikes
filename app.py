@@ -207,5 +207,33 @@ def generate_email_endpoint():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# --- Check Inbox Endpoint ---
+@app.route('/api/utils/check-inbox', methods=['POST'])
+def check_inbox_endpoint():
+    try:
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        if not email or not password:
+            return jsonify({"error": "Missing email or password"}), 400
+        
+        import requests
+        BASE_URL = "https://api.mail.tm"
+        
+        # 1. Get Token
+        r_token = requests.post(f"{BASE_URL}/token", json={"address": email, "password": password})
+        if r_token.status_code != 200:
+            return jsonify({"error": "Login failed (Invalid creds or account expired?)"}), 400
+        token = r_token.json()['token']
+        
+        # 2. Get Messages
+        headers = {"Authorization": f"Bearer {token}"}
+        r_msgs = requests.get(f"{BASE_URL}/messages", headers=headers)
+        messages = r_msgs.json().get('hydra:member', [])
+        
+        return jsonify(messages)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(port=5353, debug=True)
