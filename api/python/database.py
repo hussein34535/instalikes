@@ -33,9 +33,18 @@ def get_db_connection():
             hostname = url.hostname
             
             # 1. Force resolve IPv4 address (GitHub Actions often fails on IPv6)
-            ipv4_ip = socket.gethostbyname(hostname)
-            print(f"Resolving DB Host: {hostname} -> {ipv4_ip} (IPv4)")
-            
+            # Use getaddrinfo to strictly ask for IPv4 (AF_INET)
+            try:
+                addr_info = socket.getaddrinfo(hostname, None, family=socket.AF_INET)
+                if addr_info:
+                    ipv4_ip = addr_info[0][4][0]
+                    print(f"Resolving DB Host: {hostname} -> {ipv4_ip} (IPv4)")
+                else:
+                    raise Exception("No IPv4 address found for host")
+            except Exception as dns_err:
+                print(f"DNS Resolution failed: {dns_err}")
+                raise dns_err
+
             # 2. Connect using the resolved IP
             conn = psycopg2.connect(
                 host=ipv4_ip,
@@ -47,7 +56,10 @@ def get_db_connection():
             )
             return conn
         except Exception as e:
-            print(f"IPv4 fallback failed (trying default URL): {e}")
+            print(f"Connection failed: {e}")
+            # Do not fallback to default if we know it fails on IPv6, just raise or try clean connect
+            # Retry with original hostname just in case (though likely to fail as per logs)
+            print("Retrying with original hostname...")
             conn = psycopg2.connect(DATABASE_URL)
             return conn
     else:
