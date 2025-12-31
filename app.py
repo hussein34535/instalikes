@@ -10,6 +10,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from api.python.get_results import get_results_process
 from api.python.manage_accounts import upload_accounts_process, get_account_stats_process
+import api.python.database as db
 
 # Load env vars
 load_dotenv("dev.vars")
