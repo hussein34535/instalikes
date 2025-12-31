@@ -62,6 +62,11 @@ def get_db_connection():
             # We must try standard Supabase Transaction Poolers (IPv4 compatible)
             print("Direct Host has no IPv4. Attempting Regional Pooler Auto-Discovery...")
             
+            # Extract Project ID from Hostname (e.g. db.abcdefg.supabase.co -> abcdefg)
+            project_id = hostname.split('.')[1]
+            pooler_username = f"{url.username}.{project_id}"
+            print(f"Pooler Authentication: Using username '{pooler_username}' for routing.")
+
             regions = [
                 "aws-0-us-east-1.pooler.supabase.com",      # US East (N. Virginia)
                 "aws-0-eu-central-1.pooler.supabase.com",   # EU (Frankfurt)
@@ -78,10 +83,10 @@ def get_db_connection():
                     # We try 6543 first as it's the standard for serverless
                     conn = psycopg2.connect(
                         host=pooler_host,
-                        user=url.username, # Note: Pooler usernames might need .projectref suffix, but standard direct user often works if tenant is resolved
+                        user=pooler_username, # MUST be user.project_ref for poolers
                         password=url.password,
                         port=5432, # Trying session mode port first on pooler host
-                        dbname=url.path[1:],
+                        dbname="postgres", # Poolers usually expect 'postgres' or explicit db name
                         sslmode='require',
                         connect_timeout=3
                     )
