@@ -296,6 +296,7 @@ export default function Home() {
         <div style={{ marginBottom: '20px', borderBottom: '1px solid #334155' }}>
           <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
           <button className={`tab-btn ${activeTab === 'accounts' ? 'active' : ''}`} onClick={() => setActiveTab('accounts')}>Account Lab 🧪</button>
+          <button className={`tab-btn ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => setActiveTab('generator')}>Generator ⚡</button>
         </div>
 
         {/* Content */}
@@ -349,6 +350,68 @@ export default function Home() {
                   })}
                   <div ref={logsEndRef} />
                 </div>
+              </div>
+            </div>
+          )}
+
+          )}
+
+          {activeTab === 'generator' && (
+            <div className="glass-panel" style={{ padding: '30px' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#4ade80' }}>📧 Email Generator (Mail.tm)</h3>
+              <p style={{ color: '#94a3b8', marginBottom: '30px' }}>Generate fresh, valid emails for Instagram creation. These emails are capable of receiving verification codes.</p>
+
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'end', marginBottom: '30px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#94a3b8' }}>Count</label>
+                  <input
+                    type="number"
+                    min="1" max="50"
+                    defaultValue="10"
+                    id="genCount"
+                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #475569', background: '#334155', color: 'white', width: '100px' }}
+                  />
+                </div>
+                <button
+                  id="genBtn"
+                  className="btn btn-success"
+                  style={{ height: '42px' }}
+                  onClick={async () => {
+                    const count = document.getElementById('genCount').value;
+                    const btn = document.getElementById('genBtn');
+                    const out = document.getElementById('genOut');
+                    btn.textContent = "Generating...";
+                    btn.disabled = true;
+
+                    try {
+                      const res = await fetch('/api/utils/generate-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ count: parseInt(count) })
+                      });
+                      const data = await res.json();
+                      let text = "";
+                      data.forEach(acc => text += `${acc.email}:${acc.password}\n`);
+                      out.value = text;
+                    } catch (e) {
+                      alert("Error: " + e);
+                    }
+                    btn.textContent = "Generate 🚀";
+                    btn.disabled = false;
+                  }}
+                >
+                  Generate 🚀
+                </button>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#94a3b8' }}>Generated Accounts (Email:Password)</label>
+                <textarea
+                  id="genOut"
+                  readOnly
+                  placeholder="Accounts will appear here..."
+                  style={{ width: '100%', height: '300px', padding: '15px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#4ade80', fontFamily: 'monospace', resize: 'vertical' }}
+                ></textarea>
               </div>
             </div>
           )}
