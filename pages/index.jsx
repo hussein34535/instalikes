@@ -10,6 +10,7 @@ export default function Home() {
   const [post, setPost] = useState('');
   const [logs, setLogs] = useState([]);
   const [jobStatus, setJobStatus] = useState('IDLE');
+  const [isRunning, setIsRunning] = useState(false);
   const [stats, setStats] = useState({ total: 0, active: 0, banned: 0 });
 
   // Account Lab State
