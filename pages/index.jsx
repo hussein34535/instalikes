@@ -147,6 +147,16 @@ export default function Home() {
     }
   };
 
+  const stopCheck = async () => {
+    try {
+      await fetch(API_URL + '/api/accounts/stop', { method: 'POST' });
+      setLogs(prev => [...prev, { timestamp: new Date(), level: 'WARNING', message: '🛑 Stop signal sent...' }]);
+      setIsRunning(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <>
       <Head>
