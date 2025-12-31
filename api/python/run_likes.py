@@ -111,8 +111,13 @@ def process_account(acc, media_id, job_id):
             db.log_event(job_id, f"[{username}] ⚠️ Challenge Required (Check Account Lab)", "WARNING")
             
         elif "find an account" in error_str:
-             db.update_account_status(username, 'BANNED')
-             db.log_event(job_id, f"[{username}] ❌ Account Deleted/Banned (User not found)", "ERROR")
+             # User reports active accounts sometimes give this error on checkpoint
+             db.update_account_status(username, 'WAITING_FOR_CODE') 
+             db.log_event(job_id, f"[{username}] ⚠️ Login Failed: User Not Found or Challenged (Check Account Lab)", "WARNING")
+
+        elif "auth_platform" in error_str or "404 client error" in error_str:
+             db.update_account_status(username, 'WAITING_FOR_CODE')
+             db.log_event(job_id, f"[{username}] ⚠️ Checkpoint/Challenge Failed (Check Account Lab)", "WARNING")
              
         elif "password" in error_str or "credentials" in error_str:
             db.update_account_status(username, 'BANNED') # Likely invalid
