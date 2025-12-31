@@ -24,8 +24,32 @@ def get_db_type():
 def get_db_connection():
     db_type = get_db_type()
     if db_type == "POSTGRES":
-        conn = psycopg2.connect(DATABASE_URL)
-        return conn
+        try:
+            # Parse URL to get connection details
+            from urllib.parse import urlparse
+            import socket
+            
+            url = urlparse(DATABASE_URL)
+            hostname = url.hostname
+            
+            # 1. Force resolve IPv4 address (GitHub Actions often fails on IPv6)
+            ipv4_ip = socket.gethostbyname(hostname)
+            print(f"Resolving DB Host: {hostname} -> {ipv4_ip} (IPv4)")
+            
+            # 2. Connect using the resolved IP
+            conn = psycopg2.connect(
+                host=ipv4_ip,
+                user=url.username,
+                password=url.password,
+                port=url.port,
+                dbname=url.path[1:],
+                sslmode='require' 
+            )
+            return conn
+        except Exception as e:
+            print(f"IPv4 fallback failed (trying default URL): {e}")
+            conn = psycopg2.connect(DATABASE_URL)
+            return conn
     else:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
